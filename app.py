@@ -51,17 +51,17 @@ st.markdown(
     section[data-testid="stSidebar"] div,
     section[data-testid="stSidebar"] label {{ color: {fixed_colors['sidebar_text']} !important; }}
     
-    /* Input Fields (ปรับให้สะอาด รองรับปุ่มลูกตาภายใน) */
+    /* --- 1. Input Fields (บังคับสีขาวทั้งหมด) --- */
     div[data-baseweb="input"] {{
-        background-color: {fixed_colors['input_bg']} !important;
+        background-color: #ffffff !important; /* พื้นหลังสีขาว */
         border: 1px solid #ccc !important;
         border-radius: 6px !important;
     }}
     input[type="text"], input[type="password"] {{
-        color: {fixed_colors['input_text']} !important;
-        -webkit-text-fill-color: {fixed_colors['input_text']} !important;
-        caret-color: {fixed_colors['input_text']} !important;
-        background-color: transparent !important; /* ให้เห็นพื้นหลังของ div */
+        color: #000000 !important; /* ตัวหนังสือสีดำ */
+        -webkit-text-fill-color: #000000 !important;
+        caret-color: #000000 !important;
+        background-color: transparent !important; /* ให้เห็นสีขาวจาก div แม่ */
     }}
     
     /* Sticky Header */
@@ -101,7 +101,7 @@ st.markdown(
     /* --- Form Login Button Style (PASTEL GREEN) --- */
     div[data-testid="stForm"] button {{
         width: 100%;
-        background-color: #66D9A5 !important; /* Pastel Green */
+        background-color: #66D9A5 !important; 
         color: white !important;
         border: none !important;
         font-weight: bold;
@@ -109,6 +109,16 @@ st.markdown(
     }}
     div[data-testid="stForm"] button:hover {{
         background-color: #57C293 !important;
+    }}
+
+    /* --- 3. Table Header Styling (Bold & Center) --- */
+    /* Target หัวตารางของ st.dataframe */
+    div[data-testid="stDataFrame"] div[role="columnheader"] {{
+        font-weight: 900 !important; /* ตัวหนา */
+        color: {main_text} !important;
+        background-color: #e0e0e0 !important; /* พื้นหลังหัวตารางสีเทาอ่อนให้เด่นขึ้น */
+        justify-content: center !important; /* จัดกึ่งกลางแนวนอน */
+        text-align: center !important;
     }}
     </style>
     """, unsafe_allow_html=True
@@ -182,7 +192,7 @@ with st.sidebar:
 
     if not st.session_state.logged_in:
         with st.form(key='login_form'):
-            # ใช้ Native Password Input เพื่อรองรับปุ่ม Enter และลูกตาในตัว
+            # ช่อง Input สีขาวทั้งหมดตาม CSS ด้านบน
             password = st.text_input("รหัสผ่าน Admin", type="password")
             submit_button = st.form_submit_button("เข้าสู่ระบบ")
             
@@ -230,9 +240,10 @@ with st.sidebar:
                         st.error(msg)
         
         st.markdown("---")
+        # --- 2. LOGOUT BUTTON FIX ---
         if st.button("ออกจากระบบ", key="logout_btn"):
-            st.session_state.clear()
-            st.rerun()
+            st.session_state.clear() # ล้างค่าทุกอย่าง
+            st.rerun() # รีโหลดหน้าเว็บใหม่ทันที
 
 # ==========================================
 # MAIN CONTENT
@@ -313,10 +324,8 @@ if df is not None:
         display_df = df
 
     if not display_df.empty:
-        # --- แปลงค่าวันหมดอายุให้เป็น Text String Format (DD-MM-YYYY) ---
-        # วิธีนี้จะบังคับให้ตารางแสดงผลตามข้อความที่เราจัดไว้เป๊ะๆ ไม่เพี้ยน
+        # Format Date as String DD-MM-YYYY
         if 'ExpDate' in display_df.columns:
-             # สร้าง Column ใหม่สำหรับแสดงผลโดยเฉพาะ
              display_df['EXP_Show'] = pd.to_datetime(display_df['ExpDate'], errors='coerce').dt.strftime('%d-%m-%Y').fillna("-")
         else:
              display_df['EXP_Show'] = "-"
@@ -328,7 +337,7 @@ if df is not None:
             'QtyDisplay': 'คงเหลือ', 
             'price': 'ทุน', 
             'LotNo': 'Lot', 
-            'EXP_Show': 'EXP' # ใช้คอลัมน์ที่เราจัด Format แล้ว
+            'EXP_Show': 'EXP'
         }
         
         valid_cols = [c for c in cols_map.keys() if c in display_df.columns]
