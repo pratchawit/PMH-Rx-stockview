@@ -90,24 +90,27 @@ st.markdown(
     [data-testid='stFileUploader'] svg, [data-testid='stFileUploader'] div {{ fill: #2563EB !important; color: #1E3A8A !important; }}
     [data-testid='stFileUploader'] button {{ background-color: #2563EB; color: white !important; border: none; }}
 
-    /* Logout Button Style (Red-Orange) */
+    /* --- Logout Button Style (Red-Orange) --- */
+    /* เลือกปุ่มสุดท้ายของ Sidebar เสมอ */
     section[data-testid="stSidebar"] .stButton:last-of-type button {{
-        background-color: #FF5722 !important; color: white !important; border: none !important; font-weight: bold;
+        background-color: #FF5722 !important; 
+        color: white !important; 
+        border: none !important; 
+        font-weight: bold;
     }}
     
     /* --- Form Login Button Style (PASTEL GREEN) --- */
-    /* แก้ไข: ระบุเจาะจงเฉพาะปุ่ม Submit (.stButton > button) ไม่ให้กระทบปุ่มลูกตาใน Input */
-    div[data-testid="stForm"] .stButton > button {{
+    /* แก้ไข: ใช้ Selector ที่กว้างขึ้นเพื่อให้มั่นใจว่าติดสีแน่นอน */
+    div[data-testid="stForm"] button {{
         width: 100%;
-        background-color: #66D9A5 !important; /* Pastel Green (Minty) */
+        background-color: #66D9A5 !important; /* Pastel Green */
         color: white !important;
         border: none !important;
         font-weight: bold;
-        transition: 0.3s;
+        margin-top: 10px;
     }}
-    div[data-testid="stForm"] .stButton > button:hover {{
-        background-color: #57C293 !important; /* เข้มขึ้นนิดหน่อยตอนเอาเมาส์ชี้ */
-        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    div[data-testid="stForm"] button:hover {{
+        background-color: #57C293 !important;
     }}
     </style>
     """, unsafe_allow_html=True
@@ -181,7 +184,6 @@ with st.sidebar:
 
     if not st.session_state.logged_in:
         with st.form(key='login_form'):
-            # ช่องรหัสผ่าน (ตอนนี้ปุ่มดูรหัสจะกลับมาเป็นปกติ ชิดขวา ไม่เป็นแถบสีเขียวแล้ว)
             password = st.text_input("รหัสผ่าน Admin", type="password")
             submit_button = st.form_submit_button("เข้าสู่ระบบ")
             
@@ -229,8 +231,11 @@ with st.sidebar:
                         st.error(msg)
         
         st.markdown("---")
-        if st.button("ออกจากระบบ"):
-            st.session_state.logged_in = False
+        
+        # --- LOGOUT BUTTON ---
+        # แก้ไข: ใช้ st.session_state.clear() เพื่อล้างค่าให้สะอาดหมดจด
+        if st.button("ออกจากระบบ", key="logout_btn"):
+            st.session_state.clear() # ล้างค่าทุกอย่างรวมถึง logged_in และ theme
             st.rerun()
 
 # ==========================================
@@ -324,8 +329,11 @@ if df is not None:
         rows_norm = table.index[group_ids % 2 == 0]
 
         styler = table.style.format(precision=2)
+        
+        # --- แก้ไข Format วันที่ (EXP) เป็น DD-MM-YYYY ---
         if 'EXP' in table.columns: 
-            styler = styler.format({'EXP': lambda x: x.strftime('%d/%m/%Y') if pd.notnull(x) else "-"})
+            styler = styler.format({'EXP': lambda x: x.strftime('%d-%m-%Y') if pd.notnull(x) else "-"})
+            
         if 'ทุน' in table.columns: 
             styler = styler.format({'ทุน': '{:,.2f}'})
 
