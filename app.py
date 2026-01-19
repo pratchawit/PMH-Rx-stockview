@@ -1,147 +1,137 @@
 import streamlit as st
 import pandas as pd
-from datetime import datetime
 
 # --- ตั้งค่าหน้าเว็บ ---
-st.set_page_config(
-    page_title="Inventory Search System", 
-    page_icon="🏥", 
-    layout="wide"
-)
+st.set_page_config(page_title="Inventory System", page_icon="🏥", layout="wide")
 
-# --- 1. Security Check (Login) ---
+# --- 1. ระบบตรวจสอบรหัสผ่าน (แก้ไขใหม่) ---
 def check_password():
-    """Returns `True` if the user had the correct password."""
+    if "password_correct" not in st.session_state:
+        st.session_state["password_correct"] = False
+
     def password_entered():
-        if st.session_state["password"] == "admin1234":
+        # แก้ไขรหัสผ่านตามที่ระบุ
+        if st.session_state["password"] == "rb,kp@10884":
             st.session_state["password_correct"] = True
             del st.session_state["password"]
         else:
             st.session_state["password_correct"] = False
 
-    if "password_correct" not in st.session_state:
+    if not st.session_state["password_correct"]:
         st.text_input("🔑 กรุณาระบุรหัสผ่าน", type="password", on_change=password_entered, key="password")
         return False
-    elif not st.session_state["password_correct"]:
-        st.text_input("🔑 กรุณาระบุรหัสผ่าน", type="password", on_change=password_entered, key="password")
-        st.error("😕 รหัสผ่านไม่ถูกต้อง")
-        return False
-    else:
-        return True
+    return True
 
 if not check_password():
     st.stop()
 
-# --- 2. Data Processing Logic ---
+# --- 2. ฟังก์ชันโหลดข้อมูล ---
 @st.cache_data
 def load_data(file):
     try:
+        # อ่านไฟล์ Excel (รองรับทั้ง xls และ xlsx)
         df = pd.read_excel(file)
-        df.columns = df.columns.str.strip() # ลบช่องว่างหัวตาราง
         
-        required_cols = ['d1', 'CODE1', 'Amount1', 'minofLotPack', 'price', 
-                         'ExpDate', 'NAME1', 'TYPE', 'CONTENT', 'Tradename', 'LotNo']
-        
-        # ตรวจสอบคอลัมน์แบบยืดหยุ่น (Case Insensitive)
-        df_cols_upper = [c.upper() for c in df.columns]
-        req_cols_upper = [r.upper() for r in required_cols]
-        
-        missing_cols = [r for r in required_cols if r.upper() not in df_cols_upper]
-        
-        if missing_cols:
-            return None, f"ไม่พบคอลัมน์: {missing_cols}"
+        # ลบช่องว่างหัวตาราง (เผื่อใน Excel มีเว้นวรรคหน้าหลังโดยไม่ตั้งใจ)
+        df.columns = df.columns.astype(str).str.strip()
 
-        # --- Data Transformation ---
-        df['ExpDate'] = pd.to_datetime(df['ExpDate'], errors='coerce')
+        # ตรวจสอบว่ามี Column สำคัญครบหรือไม่ (ระบุชื่อตรงๆ)
+        required_cols = ['CODE1', 'NAME1', 'Amount1', 'minofLotPack', 'TradeName']
+        missing = [col for col in required_cols if col not in df.columns]
         
-        # Clean Data
-        df['TYPE'] = df['TYPE'].fillna("ไม่ระบุ").astype(str).str.strip()
-        df['NAME1'] = df['NAME1'].fillna("").astype(str).str.strip()
-        df['CONTENT'] = df['CONTENT'].fillna("").astype(str).str.strip()
+        if missing:
+            return None, f"ไม่พบคอลัมน์: {missing} (กรุณาตรวจสอบชื่อหัวตารางใน Excel)"
+
+        # --- จัดการข้อมูล ---
         
-        # DisplayName = NAME CONTENT TYPE
-        df['DisplayName'] = df['NAME1'] + " " + df['CONTENT'] + " " + df['TYPE']
+        # สร้าง DisplayName (ชื่อ + ความแรง + รูปแบบ)
+        # ตรวจสอบว่ามีคอลัมน์ TYPE กับ CONTENT ไหม ถ้าไม่มีให้ใส่ค่าว่าง
+        df['TYPE'] = df['TYPE'].fillna("").astype(str) if 'TYPE' in df.columns else ""
+        df['CONTENT'] = df['CONTENT'].fillna("").astype(str) if 'CONTENT' in df.columns else ""
         
+        # สูตร: NAME1 + CONTENT + TYPE
+        df['DisplayName'] = df['NAME1'].astype(str) + " " + df['CONTENT'] + " " + df['TYPE']
+        
+        # สร้าง QtyDisplay
         df['QtyDisplay'] = df['Amount1'].astype(str) + " x " + df['minofLotPack'].astype(str)
-        df['Tradename'] = df['Tradename'].fillna("-")
-        df['LotNo'] = df['LotNo'].fillna("-")
-
-        # Get Last Update
-        last_update = df['d1'].iloc[0] if not df.empty else "ไม่ระบุ"
-        if isinstance(last_update, pd.Timestamp):
-            last_update = last_update.strftime('%d/%m/%Y')
+        
+        # จัดการวันที่ (ExpDate)
+        if 'ExpDate' in df.columns:
+            df['ExpDate'] = pd.to_datetime(df['ExpDate'], errors='coerce')
+        
+        # จัดการราคา (Price)
+        if 'price' not in df.columns:
+            df['price'] = 0
             
-        return df, last_update
+        # จัดการ LotNo
+        if 'LotNo' not in df.columns:
+            df['LotNo'] = "-"
+        else:
+            df['LotNo'] = df['LotNo'].fillna("-")
+
+        # จัดการ TradeName (เผื่อมีช่องว่าง)
+        df['TradeName'] = df['TradeName'].fillna("-")
+
+        return df, "OK"
 
     except Exception as e:
-        return None, str(e)
+        return None, f"เกิดข้อผิดพลาด: {str(e)}"
 
-# --- 3. UI Section ---
+# --- 3. ส่วนแสดงผล ---
 st.title("🏥 ระบบสืบค้นคลังยา (Smart Search)")
 
-uploaded_file = st.file_uploader("📂 อัปโหลดไฟล์ Excel (.xlsx)", type=['xlsx', 'xls'])
+uploaded_file = st.file_uploader("📂 อัปโหลดไฟล์ Excel (.xls / .xlsx)", type=['xlsx', 'xls'])
 
 if uploaded_file:
     df, status = load_data(uploaded_file)
     
     if df is not None:
-        st.info(f"🕒 ข้อมูลอัปเดตล่าสุด: {status}")
+        st.success(f"✅ โหลดข้อมูลสำเร็จ ({len(df)} รายการ)")
         
-        # Sidebar Filter
-        st.sidebar.header("ตัวเลือกการกรอง")
-        all_types = sorted(df['TYPE'].unique())
-        selected_types = st.sidebar.multiselect("ประเภทเวชภัณฑ์ (TYPE)", options=all_types, default=all_types)
+        # ช่องค้นหา
+        search_text = st.text_input("🔍 ค้นหา (พิมพ์ชื่อยา, รหัส, หรือชื่อการค้า)", "")
         
-        # Logic
-        filtered_df = df[df['TYPE'].isin(selected_types)]
-        search_query = st.text_input("🔍 ค้นหา (พิมพ์ชื่อ, รหัส, หรือยี่ห้อ)", "", placeholder="พิมพ์คำค้นหา...")
-
-        if search_query:
-            mask = (
-                filtered_df['DisplayName'].str.contains(search_query, case=False, na=False) |
-                filtered_df['CODE1'].astype(str).str.contains(search_query, case=False, na=False) |
-                filtered_df['Tradename'].str.contains(search_query, case=False, na=False)
-            )
-            final_result = filtered_df[mask]
+        # กรองข้อมูล
+        if search_text:
+            # ค้นหาใน DisplayName, CODE1, และ TradeName
+            mask = df['DisplayName'].astype(str).str.contains(search_text, case=False, na=False) | \
+                   df['CODE1'].astype(str).str.contains(search_text, case=False, na=False) | \
+                   df['TradeName'].astype(str).str.contains(search_text, case=False, na=False)
+            result = df[mask]
         else:
-            final_result = filtered_df
+            result = df # ถ้าไม่ค้นหา ให้แสดงทั้งหมด
 
-        st.write(f"**พบข้อมูลทั้งหมด: {len(final_result):,} รายการ**")
+        st.write(f"ผลลัพธ์: {len(result)} รายการ")
         
-        tab1, tab2 = st.tabs(["📋 มุมมองแบบการ์ด", "📊 มุมมองตารางรวม"])
-        
-        with tab1:
-            if len(final_result) > 200 and not search_query:
-                st.warning(f"⚠️ ข้อมูลมีจำนวนมาก ({len(final_result):,}) แสดงผล 200 รายการแรกเพื่อความรวดเร็ว")
-            
-            for index, row in final_result.head(200).iterrows():
-                is_expired = False
-                exp_str = "-"
-                if pd.notnull(row['ExpDate']):
-                    exp_str = row['ExpDate'].strftime('%d/%m/%Y')
+        # แสดงผลแบบการ์ด (จำกัด 100 รายการแรก เพื่อความลื่นไหล)
+        for index, row in result.head(100).iterrows():
+            with st.container():
+                # ส่วนหัวการ์ด
+                c1, c2 = st.columns([0.8, 0.2])
+                c1.subheader(f"💊 {row['DisplayName']}")
+                
+                # ตรวจสอบวันหมดอายุ
+                if 'ExpDate' in row and pd.notnull(row['ExpDate']):
+                    exp_date = row['ExpDate'].strftime('%d/%m/%Y')
                     if row['ExpDate'] < pd.Timestamp.now():
-                        is_expired = True
+                         c2.error(f"EXP: {exp_date}") # แดง = หมดอายุ
+                    else:
+                         c2.success(f"EXP: {exp_date}") # เขียว = ปกติ
+                else:
+                    c2.info("EXP: -")
 
-                with st.container():
-                    c1, c2 = st.columns([0.7, 0.3])
-                    with c1:
-                        st.subheader(f"💊 {row['DisplayName']}")
-                        st.text(f"CODE: {row['CODE1']} | Trade: {row['Tradename']}")
-                    with c2:
-                         if is_expired:
-                             st.error(f"EXP: {exp_str}")
-                         else:
-                             st.success(f"EXP: {exp_str}")
+                # รายละเอียด
+                st.caption(f"Code: {row['CODE1']} | TradeName: {row['TradeName']}")
+                
+                # ข้อมูลตัวเลข
+                m1, m2, m3 = st.columns(3)
+                m1.metric("📦 คงเหลือ", row['QtyDisplay'])
+                m2.metric("💰 ราคา", f"{row['price']:,.2f}")
+                m3.metric("🏷️ Lot", str(row['LotNo']))
+                
+                st.divider()
 
-                    c_a, c_b, c_c = st.columns(3)
-                    c_a.metric("📦 คงเหลือ", row['QtyDisplay'])
-                    c_b.metric("💰 ทุน", f"{row['price']:,.2f}")
-                    c_c.metric("🏷️ Lot", str(row['LotNo']))
-                    st.divider()
-
-        with tab2:
-            st.dataframe(final_result)
     else:
-        st.error(f"Error: {status}")
+        st.error(f"⚠️ อ่านไฟล์ไม่ได้: {status}")
 else:
     st.info("👋 กรุณาอัปโหลดไฟล์ Excel เพื่อเริ่มใช้งาน")
