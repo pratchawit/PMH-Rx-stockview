@@ -51,7 +51,7 @@ st.markdown(
     section[data-testid="stSidebar"] div,
     section[data-testid="stSidebar"] label {{ color: {fixed_colors['sidebar_text']} !important; }}
     
-    /* Input Fields */
+    /* Input Fields (ปรับให้สะอาด รองรับปุ่มลูกตาภายใน) */
     div[data-baseweb="input"] {{
         background-color: {fixed_colors['input_bg']} !important;
         border: 1px solid #ccc !important;
@@ -61,7 +61,7 @@ st.markdown(
         color: {fixed_colors['input_text']} !important;
         -webkit-text-fill-color: {fixed_colors['input_text']} !important;
         caret-color: {fixed_colors['input_text']} !important;
-        background-color: {fixed_colors['input_bg']} !important;
+        background-color: transparent !important; /* ให้เห็นพื้นหลังของ div */
     }}
     
     /* Sticky Header */
@@ -91,7 +91,6 @@ st.markdown(
     [data-testid='stFileUploader'] button {{ background-color: #2563EB; color: white !important; border: none; }}
 
     /* --- Logout Button Style (Red-Orange) --- */
-    /* เลือกปุ่มสุดท้ายของ Sidebar เสมอ */
     section[data-testid="stSidebar"] .stButton:last-of-type button {{
         background-color: #FF5722 !important; 
         color: white !important; 
@@ -100,7 +99,6 @@ st.markdown(
     }}
     
     /* --- Form Login Button Style (PASTEL GREEN) --- */
-    /* แก้ไข: ใช้ Selector ที่กว้างขึ้นเพื่อให้มั่นใจว่าติดสีแน่นอน */
     div[data-testid="stForm"] button {{
         width: 100%;
         background-color: #66D9A5 !important; /* Pastel Green */
@@ -184,6 +182,7 @@ with st.sidebar:
 
     if not st.session_state.logged_in:
         with st.form(key='login_form'):
+            # ใช้ Native Password Input เพื่อรองรับปุ่ม Enter และลูกตาในตัว
             password = st.text_input("รหัสผ่าน Admin", type="password")
             submit_button = st.form_submit_button("เข้าสู่ระบบ")
             
@@ -231,11 +230,8 @@ with st.sidebar:
                         st.error(msg)
         
         st.markdown("---")
-        
-        # --- LOGOUT BUTTON ---
-        # แก้ไข: ใช้ st.session_state.clear() เพื่อล้างค่าให้สะอาดหมดจด
         if st.button("ออกจากระบบ", key="logout_btn"):
-            st.session_state.clear() # ล้างค่าทุกอย่างรวมถึง logged_in และ theme
+            st.session_state.clear()
             st.rerun()
 
 # ==========================================
@@ -317,7 +313,24 @@ if df is not None:
         display_df = df
 
     if not display_df.empty:
-        cols_map = {'DisplayName': 'ชื่อรายการ', 'CODE1': 'รหัส', 'TradeName': 'Tradename', 'QtyDisplay': 'คงเหลือ', 'price': 'ทุน', 'LotNo': 'Lot', 'ExpDate': 'EXP'}
+        # --- แปลงค่าวันหมดอายุให้เป็น Text String Format (DD-MM-YYYY) ---
+        # วิธีนี้จะบังคับให้ตารางแสดงผลตามข้อความที่เราจัดไว้เป๊ะๆ ไม่เพี้ยน
+        if 'ExpDate' in display_df.columns:
+             # สร้าง Column ใหม่สำหรับแสดงผลโดยเฉพาะ
+             display_df['EXP_Show'] = pd.to_datetime(display_df['ExpDate'], errors='coerce').dt.strftime('%d-%m-%Y').fillna("-")
+        else:
+             display_df['EXP_Show'] = "-"
+
+        cols_map = {
+            'DisplayName': 'ชื่อรายการ', 
+            'CODE1': 'รหัส', 
+            'TradeName': 'Tradename', 
+            'QtyDisplay': 'คงเหลือ', 
+            'price': 'ทุน', 
+            'LotNo': 'Lot', 
+            'EXP_Show': 'EXP' # ใช้คอลัมน์ที่เราจัด Format แล้ว
+        }
+        
         valid_cols = [c for c in cols_map.keys() if c in display_df.columns]
         table = display_df[valid_cols].copy().rename(columns=cols_map)
         
@@ -329,10 +342,6 @@ if df is not None:
         rows_norm = table.index[group_ids % 2 == 0]
 
         styler = table.style.format(precision=2)
-        
-        # --- แก้ไข Format วันที่ (EXP) เป็น DD-MM-YYYY ---
-        if 'EXP' in table.columns: 
-            styler = styler.format({'EXP': lambda x: x.strftime('%d-%m-%Y') if pd.notnull(x) else "-"})
             
         if 'ทุน' in table.columns: 
             styler = styler.format({'ทุน': '{:,.2f}'})
