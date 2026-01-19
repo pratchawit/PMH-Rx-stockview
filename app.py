@@ -3,93 +3,112 @@ import pandas as pd
 from github import Github
 import io
 
-# --- ตั้งค่าหน้าเว็บ (ต้องอยู่บรรทัดแรกสุดของการรัน) ---
-st.set_page_config(page_title="Inventory System", page_icon="🏥", layout="wide")
+# --- 1. ตั้งค่าหน้าเว็บ (แก้ให้ Sidebar เปิดตลอดตอนเริ่ม) ---
+st.set_page_config(
+    page_title="Inventory System", 
+    page_icon="🏥", 
+    layout="wide",
+    initial_sidebar_state="expanded" # บังคับให้เมนูเปิดเสมอตอนเริ่ม
+)
 
 # ==========================================
-# 1. ระบบ THEME & COLORS
+# 2. จัดการ THEME & COLORS
 # ==========================================
 if 'theme' not in st.session_state:
     st.session_state.theme = 'light'
 
-# กำหนด Palette สี (ปรับให้สบายตาขึ้น ไม่ขาวจั๊วะ)
+# Palette สี (ปรับ Contrast ให้ชัดขึ้น)
 if st.session_state.theme == 'dark':
     theme_colors = {
-        'bg_main': '#0f1116',        # พื้นหลังหลัก (Dark grey)
-        'bg_sidebar': '#161b22',     # พื้นหลัง Sidebar
-        'text_main': '#e6edf3',      # สีตัวหนังสือ
-        'card_bg': '#21262d',        # พื้นหลังการ์ด/Input
-        'header_bg': '#161b22',      # Sticky Header
-        'table_bg_norm': '#0d1117',  # พื้นตารางปกติ
-        'table_bg_alt': '#1f2428',   # พื้นตารางสลับสี
-        'accent': '#238636'          # สีเขียวเน้น
+        'bg_main': '#0f1116',
+        'bg_sidebar': '#161b22',
+        'text_main': '#e6edf3',
+        'input_bg': '#21262d',       # สีพื้นช่องค้นหา
+        'input_text': '#ffffff',     # สีตัวหนังสือในช่องค้นหา (ขาว)
+        'header_bg': '#161b22',
+        'table_bg_norm': '#0d1117',
+        'table_bg_alt': '#1f2428',
+        'accent': '#238636'
     }
 else:
-    # Light Mode (Eye Comfort)
+    # Light Mode (ปรับสีให้อ่านง่าย สบายตา)
     theme_colors = {
-        'bg_main': '#f8fafc',        # เทาอมฟ้าจางๆ (ไม่ขาวโอโม่)
-        'bg_sidebar': '#f1f5f9',     # เทาอ่อน Sidebar
-        'text_main': '#334155',      # เทาเข้ม (อ่านง่ายกว่าดำสนิท)
-        'card_bg': '#ffffff',        # กล่องข้อความสีขาว
-        'header_bg': '#ffffff',      # Header สีขาว
-        'table_bg_norm': '#ffffff',  # พื้นตารางปกติ
-        'table_bg_alt': '#e2e8f0',   # พื้นตารางสลับสี (เทาฟ้าอ่อนๆ)
-        'accent': '#059669'          # สีเขียวมรกต
+        'bg_main': '#f8fafc',
+        'bg_sidebar': '#f1f5f9',
+        'text_main': '#1e293b',      # สีเทาเข้มเกือบดำ (อ่านง่าย)
+        'input_bg': '#ffffff',       # สีพื้นช่องค้นหา (ขาว)
+        'input_text': '#000000',     # สีตัวหนังสือในช่องค้นหา (ดำสนิท)
+        'header_bg': '#ffffff',
+        'table_bg_norm': '#ffffff',
+        'table_bg_alt': '#e2e8f0',   # สีเทาฟ้าอ่อนๆ
+        'accent': '#059669'
     }
 
-# --- CSS Injection (บังคับสี) ---
+# --- CSS Injection (แก้บั๊ก Sidebar และ Input) ---
 st.markdown(
     f"""
     <style>
-    /* Main Background */
+    /* 1. สีพื้นหลังหลัก */
     .stApp {{
         background-color: {theme_colors['bg_main']};
         color: {theme_colors['text_main']};
     }}
     
-    /* Sidebar Background */
+    /* 2. สีพื้นหลัง Sidebar */
     section[data-testid="stSidebar"] {{
         background-color: {theme_colors['bg_sidebar']};
     }}
     
-    /* Sticky Header */
-    header {{visibility: hidden;}}
+    /* 3. Sticky Header (เอา visibility: hidden ออก เพื่อให้ปุ่มเมนูยังอยู่) */
     .sticky-top-container {{
         position: sticky;
         top: 0;
-        z-index: 999;
+        z-index: 990;
         background-color: {theme_colors['header_bg']};
         padding: 15px 20px;
-        border-bottom: 2px solid #e5e7eb;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        border-bottom: 2px solid #cbd5e1;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
         margin-left: -1rem;
         margin-right: -1rem;
     }}
     
-    /* Input Fields */
-    .stTextInput input {{
-        background-color: {theme_colors['card_bg']} !important;
-        color: {theme_colors['text_main']} !important;
-        border: 1px solid #cbd5e1;
+    /* 4. ปรับช่องค้นหา (Search Box) ให้ชัด */
+    div[data-baseweb="input"] {{
+        background-color: {theme_colors['input_bg']} !important;
+        border: 1px solid #94a3b8 !important; /* เส้นขอบชัดขึ้น */
+        border-radius: 8px !important;
     }}
     
-    /* Date Badge */
+    /* บังคับสีตัวหนังสือใน Input ให้ตัดกับพื้นหลัง */
+    input[type="text"] {{
+        color: {theme_colors['input_text']} !important;
+        -webkit-text-fill-color: {theme_colors['input_text']} !important;
+        caret-color: {theme_colors['input_text']} !important;
+        font-weight: 500;
+    }}
+    
+    /* ปรับแต่งปุ่มวันที่ */
     .date-badge {{
         background-color: {theme_colors['accent']};
         color: white;
-        padding: 4px 12px;
-        border-radius: 12px;
-        font-size: 0.9rem;
-        font-weight: 500;
-        box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+        padding: 6px 15px;
+        border-radius: 20px;
+        font-size: 1rem;
+        font-weight: 600;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        display: inline-block;
     }}
     
-    /* App Title */
     .app-title {{
-        font-size: 1.6rem;
-        font-weight: 700;
+        font-size: 1.8rem;
+        font-weight: 800;
         color: {theme_colors['text_main']};
-        margin-bottom: 5px;
+        margin-bottom: 8px;
+    }}
+    
+    /* ซ่อน Header มาตรฐานของ Streamlit บางส่วน (แต่เก็บปุ่มเมนูไว้) */
+    header[data-testid="stHeader"] {{
+        background-color: rgba(0,0,0,0);
     }}
     </style>
     """,
@@ -143,20 +162,20 @@ def load_data_from_github():
 # SIDEBAR (เมนูควบคุม)
 # ==========================================
 with st.sidebar:
-    st.header("⚙️ ตั้งค่าการแสดงผล")
+    st.title("⚙️ เมนูหลัก")
     
-    # Toggle Theme
+    # 1. Theme Switcher
+    st.write("**รูปแบบการแสดงผล**")
     is_dark = st.session_state.theme == 'dark'
-    if st.toggle("🌙 โหมดกลางคืน (Dark Mode)", value=is_dark):
+    if st.toggle("🌙 โหมดกลางคืน (Dark)", value=is_dark):
         st.session_state.theme = 'dark'
     else:
         st.session_state.theme = 'light'
         
-    st.markdown("---")
+    st.divider()
     
-    st.header("🔐 สำหรับเจ้าหน้าที่")
-    
-    # Login Logic
+    # 2. Login System
+    st.write("🔐 **สำหรับเจ้าหน้าที่**")
     if "logged_in" not in st.session_state:
         st.session_state.logged_in = False
 
@@ -164,29 +183,32 @@ with st.sidebar:
         password = st.text_input("รหัสผ่าน Admin", type="password")
         if password == "rb,kp@10884":
             st.session_state.logged_in = True
-            st.success("เข้าสู่ระบบแล้ว")
+            st.success("✅ เข้าสู่ระบบแล้ว")
             st.rerun()
     else:
-        st.success("✅ สถานะ: Admin")
-        if st.button("ออกจากระบบ"):
-            st.session_state.logged_in = False
-            st.rerun()
-            
-        st.markdown("### 📤 อัปเดตข้อมูล")
+        st.info(f"สถานะ: Admin")
+        
+        # Upload Section
+        st.markdown("---")
+        st.write("📤 **อัปเดตฐานข้อมูล**")
         uploaded_file = st.file_uploader("เลือกไฟล์ Excel", type=['xlsx', 'xls'])
         
         if uploaded_file:
-            if st.button("🚀 อัปโหลดขึ้น Server"):
-                with st.status("กำลังทำงาน...", expanded=True) as status:
+            if st.button("🚀 อัปโหลดขึ้น Server", type="primary"):
+                with st.status("กำลังดำเนินการ...", expanded=True) as status:
                     success, msg = upload_to_github(uploaded_file.getvalue())
                     if success:
-                        status.update(label="✅ เรียบร้อย", state="complete")
+                        status.update(label="✅ สำเร็จ", state="complete")
                         st.success(msg)
                         st.cache_data.clear()
                         st.rerun()
                     else:
-                        status.update(label="❌ ผิดพลาด", state="error")
+                        status.update(label="❌ ล้มเหลว", state="error")
                         st.error(msg)
+        
+        if st.button("ออกจากระบบ"):
+            st.session_state.logged_in = False
+            st.rerun()
 
 # ==========================================
 # MAIN CONTENT
@@ -199,7 +221,7 @@ report_date_str = "-"
 if df is not None:
     df.columns = df.columns.astype(str).str.strip()
     
-    # 1. Date Extraction
+    # Date Extraction
     if 'd1' in df.columns and not df.empty:
         try:
             raw = df['d1'].iloc[0]
@@ -209,13 +231,13 @@ if df is not None:
                 except: report_date_str = str(raw)
         except: pass
 
-    # 2. Data Prep (Safe Method)
+    # Data Preparation
     trade_col = next((c for c in df.columns if c.lower().replace(" ", "") == "tradename"), None)
     df['TradeName'] = df[trade_col].fillna("-") if trade_col else "-"
     df['LotNo'] = df.get('LotNo', pd.Series(['-']*len(df))).fillna("-")
     df['price'] = df.get('price', pd.Series([0]*len(df))).fillna(0)
     
-    # รวมชื่อสินค้า (Safe String Concat)
+    # Concatenate Name safely
     df['DisplayName'] = ""
     if 'NAME1' in df.columns: df['DisplayName'] += df['NAME1'].fillna("").astype(str) + " "
     if 'CONTENT' in df.columns: df['DisplayName'] += df['CONTENT'].fillna("").astype(str) + " "
@@ -226,20 +248,26 @@ if df is not None:
     unit = df['minofLotPack'].astype(str) if 'minofLotPack' in df.columns else ""
     df['QtyDisplay'] = amt + " x " + unit
 
-# --- UI Header ---
+# --- UI HEADER (Sticky) ---
 st.markdown('<div class="sticky-top-container">', unsafe_allow_html=True)
 c1, c2 = st.columns([0.65, 0.35])
+
 with c1:
     st.markdown(f'''
         <div class="app-title">🏥 ระบบสืบค้นคลังยา</div>
-        <span class="date-badge">📅 ข้อมูลวันที่: {report_date_str}</span>
+        <div style="margin-top:5px;">
+            <span class="date-badge">📅 ข้อมูลวันที่: {report_date_str}</span>
+        </div>
     ''', unsafe_allow_html=True)
+
 with c2:
-    st.write("")
-    search_query = st.text_input("🔍 ค้นหา", "", placeholder="พิมพ์ชื่อยา, รหัส, หรือ Lot...", label_visibility="collapsed")
+    # แก้ไขช่องค้นหา: ใส่ Label ไว้ด้านบนชัดเจน และปรับ Input
+    st.markdown('<div style="font-weight:bold; margin-bottom:5px; font-size:1.1rem;">🔍 ค้นหารายการยา</div>', unsafe_allow_html=True)
+    search_query = st.text_input("Search", "", placeholder="พิมพ์ชื่อยา, รหัส หรือ Lot...", label_visibility="collapsed")
+
 st.markdown('</div>', unsafe_allow_html=True)
 
-# --- Result Table ---
+# --- RESULT TABLE ---
 if df is not None:
     if search_query:
         mask = (
@@ -253,18 +281,16 @@ if df is not None:
         display_df = df
 
     if not display_df.empty:
-        # Select & Rename Columns
         cols_map = {'DisplayName': 'ชื่อรายการ', 'CODE1': 'รหัส', 'TradeName': 'Tradename', 'QtyDisplay': 'คงเหลือ', 'price': 'ทุน', 'LotNo': 'Lot', 'ExpDate': 'EXP'}
         valid_cols = [c for c in cols_map.keys() if c in display_df.columns]
         table = display_df[valid_cols].copy().rename(columns=cols_map)
         
-        desired_order = ['ชื่อรายการ', 'รหัส', 'Tradename', 'คงเหลือ', 'ทุน', 'Lot', 'EXP']
-        final_cols = [c for c in desired_order if c in table.columns]
+        final_cols = [c for c in ['ชื่อรายการ', 'รหัส', 'Tradename', 'คงเหลือ', 'ทุน', 'Lot', 'EXP'] if c in table.columns]
         table = table[final_cols].reset_index(drop=True)
 
-        # Apply Styling
+        # Styling Logic
         group_ids = (table['ชื่อรายการ'] != table['ชื่อรายการ'].shift()).cumsum()
-        rows_alt = table.index[group_ids % 2 == 1] # แถวที่ต้องเปลี่ยนสี
+        rows_alt = table.index[group_ids % 2 == 1]
         rows_norm = table.index[group_ids % 2 == 0]
 
         styler = table.style.format(precision=2)
@@ -273,7 +299,7 @@ if df is not None:
         if 'ทุน' in table.columns: 
             styler = styler.format({'ทุน': '{:,.2f}'})
 
-        # Apply Colors from Theme Logic
+        # Apply Colors
         styler = styler.set_properties(subset=pd.IndexSlice[rows_alt, :], **{'background-color': theme_colors['table_bg_alt']})
         styler = styler.set_properties(subset=pd.IndexSlice[rows_norm, :], **{'background-color': theme_colors['table_bg_norm']})
         styler = styler.set_properties(**{'color': theme_colors['text_main']})
