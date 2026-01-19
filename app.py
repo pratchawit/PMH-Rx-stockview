@@ -6,7 +6,7 @@ import io
 # --- ตั้งค่าหน้าเว็บ ---
 st.set_page_config(page_title="Inventory System", page_icon="🏥", layout="wide")
 
-# --- CSS: Sticky Header และจัดหน้าตา ---
+# --- CSS: Sticky Header & Styling ---
 st.markdown(
     """
     <style>
@@ -18,11 +18,10 @@ st.markdown(
         z-index: 1000;
         background-color: white;
         padding: 15px 0;
-        border-bottom: 3px solid #047857; /* เส้นสีเขียวเข้มใต้หัวเว็บ */
+        border-bottom: 3px solid #047857;
         box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
     }
     
-    /* กล่องวันที่ */
     .date-badge {
         background-color: #d1fae5;
         color: #065f46;
@@ -48,12 +47,11 @@ st.markdown(
 # --- Config ---
 TARGET_FILE_NAME = "InvLotFrmByLot.xlsx" 
 
-# --- ฟังก์ชันแก้ภาษาต่างดาว (The Magic Function 🪄) ---
+# --- ฟังก์ชันแก้ภาษาต่างดาว ---
 def fix_thai_encoding(text):
     if not isinstance(text, str):
         return text
     try:
-        # สูตรแก้ภาษาต่างดาว: แปลงกลับเป็น cp1252 แล้วอ่านใหม่ด้วย cp874 (ไทย)
         return text.encode('cp1252').decode('cp874')
     except:
         return text
@@ -88,19 +86,14 @@ def load_data_from_github():
         contents = repo.get_contents(TARGET_FILE_NAME)
         file_content = contents.decoded_content
         
-        # ลองอ่านไฟล์
         try:
             df = pd.read_excel(io.BytesIO(file_content))
         except:
-            # ถ้าอ่านปกติไม่ได้ ให้ลอง engine สำหรับไฟล์รุ่นเก่า
             df = pd.read_excel(io.BytesIO(file_content), engine='xlrd')
         
-        # --- ขั้นตอนการแก้ภาษาต่างดาว ---
-        # วนลูปทุกคอลัมน์ ถ้าเป็นตัวหนังสือ ให้ลองแก้ภาษาดู
+        # แก้ภาษาต่างดาว
         for col in df.select_dtypes(include=['object']).columns:
             df[col] = df[col].apply(fix_thai_encoding)
-            
-        # แก้ชื่อหัวตารางด้วย (เผื่อหัวตารางก็อ่านไม่ออก)
         df.columns = [fix_thai_encoding(c) for c in df.columns]
             
         return df
@@ -108,7 +101,7 @@ def load_data_from_github():
         return None
 
 # ==========================================
-# ส่วนเมนู Admin (Sidebar)
+# Sidebar (Admin)
 # ==========================================
 st.sidebar.title("🔧 เมนูเจ้าหน้าที่")
 
@@ -136,7 +129,7 @@ if st.sidebar.checkbox("เข้าสู่ระบบ (Admin)"):
                         st.sidebar.error(msg)
 
 # ==========================================
-# Data Processing
+# Main Logic
 # ==========================================
 with st.spinner('กำลังดึงข้อมูล...'):
     df = load_data_from_github()
@@ -144,10 +137,10 @@ with st.spinner('กำลังดึงข้อมูล...'):
 report_date_str = "รอการอัปเดต"
 
 if df is not None:
-    # Clean Columns
+    # Clean & Prepare
     df.columns = df.columns.astype(str).str.strip()
     
-    # --- ดึงวันที่ (d1) มาโชว์ ---
+    # 1. Date
     if 'd1' in df.columns and not df.empty:
         try:
             raw_date = df['d1'].iloc[0]
@@ -155,7 +148,6 @@ if df is not None:
                 if isinstance(raw_date, pd.Timestamp):
                     report_date_str = raw_date.strftime('%d/%m/%Y')
                 else:
-                    # ถ้าเป็น String (เช่น 2025-12-29) ลองแก้ภาษาก่อนแล้วค่อยแปลง
                     date_text = fix_thai_encoding(str(raw_date))
                     try:
                         dt = pd.to_datetime(date_text)
@@ -165,49 +157,40 @@ if df is not None:
         except:
             pass
 
-    # --- เตรียมข้อมูลแสดงผล ---
-    # TradeName
+    # 2. Prepare Columns
     trade_col = next((c for c in df.columns if c.lower().replace(" ", "") == "tradename"), None)
     if trade_col: df['TradeName'] = df[trade_col].fillna("-")
     else: df['TradeName'] = "-"
 
-    # Lot & Price
     df['LotNo'] = df.get('LotNo', pd.Series(['-']*len(df))).fillna("-")
     df['price'] = df.get('price', pd.Series([0]*len(df))).fillna(0)
     
-    # DisplayName
     name_col = df['NAME1'].astype(str) if 'NAME1' in df.columns else ""
     content_col = df['CONTENT'].fillna("").astype(str) if 'CONTENT' in df.columns else ""
     type_col = df['TYPE'].fillna("").astype(str) if 'TYPE' in df.columns else ""
     df['DisplayName'] = name_col + " " + content_col + " " + type_col
     
-    # Qty
     amt_col = df['Amount1'].astype(str) if 'Amount1' in df.columns else "0"
     unit_col = df['minofLotPack'].astype(str) if 'minofLotPack' in df.columns else ""
     df['QtyDisplay'] = amt_col + " x " + unit_col
 
 # ==========================================
-# UI แสดงผล
+# UI Display
 # ==========================================
 
-# 1. Sticky Header
 with st.container():
     st.markdown('<div class="sticky-top-container">', unsafe_allow_html=True)
-    
     c1, c2 = st.columns([0.65, 0.35])
     with c1:
         st.markdown('<div class="app-title">🏥 ระบบสืบค้นคลังยา</div>', unsafe_allow_html=True)
-        # แสดงวันที่ตรงนี้
         st.markdown(f'<span class="date-badge">📅 ข้อมูลวันที่: {report_date_str}</span>', unsafe_allow_html=True)
-    
     with c2:
-        st.write("") # เว้นบรรทัด
+        st.write("")
         search_query = st.text_input("🔍 ค้นหาด่วน", "", placeholder="ชื่อยา, รหัส, Lot...", label_visibility="collapsed")
-    
     st.markdown('</div>', unsafe_allow_html=True)
 
-# 2. Table Result
 if df is not None:
+    # Filter
     if search_query:
         mask = (
             df['DisplayName'].str.contains(search_query, case=False, na=False) |
@@ -220,41 +203,54 @@ if df is not None:
         display_df = df
 
     if not display_df.empty:
-        # Mapping Column
+        # Prepare Table Data
         cols_map = {
-            'DisplayName': 'ชื่อรายการ', 
-            'CODE1': 'รหัส', 
-            'TradeName': 'Tradename',
-            'QtyDisplay': 'คงเหลือ', 
-            'price': 'ทุน', 
-            'LotNo': 'Lot',
-            'ExpDate': 'EXP'
+            'DisplayName': 'ชื่อรายการ', 'CODE1': 'รหัส', 'TradeName': 'Tradename',
+            'QtyDisplay': 'คงเหลือ', 'price': 'ทุน', 'LotNo': 'Lot', 'ExpDate': 'EXP'
         }
         
         valid_cols = [c for c in cols_map.keys() if c in display_df.columns]
         table_data = display_df[valid_cols].copy()
         table_data.rename(columns=cols_map, inplace=True)
         
-        # Order columns
         desired_order = ['ชื่อรายการ', 'รหัส', 'Tradename', 'คงเหลือ', 'ทุน', 'Lot', 'EXP']
         final_cols = [c for c in desired_order if c in table_data.columns]
         table_data = table_data[final_cols]
+        
+        # Reset Index (สำคัญมากสำหรับการทำสี)
+        table_data = table_data.reset_index(drop=True)
 
-        # Formatting
+        # --- Logic การลงสี (Group Banding) ---
+        # 1. สร้าง ID ให้แต่ละกลุ่มยา (ถ้าชื่อยาเปลี่ยน = ขึ้นกลุ่มใหม่)
+        group_ids = (table_data['ชื่อรายการ'] != table_data['ชื่อรายการ'].shift()).cumsum()
+        
+        # 2. หาว่ากลุ่มไหนเป็นเลขคี่ (เพื่อระบายสี)
+        rows_to_color = table_data.index[group_ids % 2 == 1]
+
+        # 3. สร้าง Pandas Styler
+        styler = table_data.style.format(precision=2)
+        
+        # Format วันที่และราคา
         if 'EXP' in table_data.columns:
-            table_data['EXP'] = pd.to_datetime(table_data['EXP'], errors='coerce').dt.strftime('%d/%m/%Y').fillna("-")
-            
+            styler = styler.format({'EXP': lambda x: x.strftime('%d/%m/%Y') if pd.notnull(x) else "-"})
         if 'ทุน' in table_data.columns:
-            table_data['ทุน'] = table_data['ทุน'].apply(lambda x: f"{float(x):,.2f}" if isinstance(x, (int, float)) else x)
+            styler = styler.format({'ทุน': '{:,.2f}'})
 
+        # Apply Background Color (สีฟ้าอ่อนๆ สบายตา)
+        # ใช้ subset เพื่อประสิทธิภาพที่ดีกว่า apply map ทีละช่อง
+        styler = styler.set_properties(
+            subset=pd.IndexSlice[rows_to_color, :], 
+            **{'background-color': '#f0f9ff', 'color': 'black'}
+        )
+
+        # แสดงผล
         st.dataframe(
-            table_data,
+            styler,
             use_container_width=True,
             hide_index=True,
             height=650
         )
     else:
         st.warning(f"ไม่พบข้อมูล '{search_query}'")
-        
 else:
-    st.info("👋 ระบบพร้อมใช้งาน กรุณา Login เพื่ออัปโหลดข้อมูล")
+    st.info("👋 กรุณา Login เพื่ออัปโหลดข้อมูล")
