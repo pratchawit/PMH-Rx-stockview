@@ -3,110 +3,104 @@ import pandas as pd
 from github import Github
 import io
 
-# --- 1. ตั้งค่าหน้าเว็บ (แก้ให้ Sidebar เปิดตลอดตอนเริ่ม) ---
+# --- 1. ตั้งค่าหน้าเว็บ ---
 st.set_page_config(
     page_title="Inventory System", 
     page_icon="🏥", 
     layout="wide",
-    initial_sidebar_state="expanded" # บังคับให้เมนูเปิดเสมอตอนเริ่ม
+    initial_sidebar_state="expanded"
 )
 
 # ==========================================
-# 2. จัดการ THEME & COLORS
+# 2. จัดการ THEME (Hybrid System)
 # ==========================================
 if 'theme' not in st.session_state:
     st.session_state.theme = 'light'
 
-# Palette สี (ปรับ Contrast ให้ชัดขึ้น)
+# กำหนดสีแบบเจาะจงตาม Requirement
 if st.session_state.theme == 'dark':
-    theme_colors = {
-        'bg_main': '#0f1116',
-        'bg_sidebar': '#161b22',
-        'text_main': '#e6edf3',
-        'input_bg': '#21262d',       # สีพื้นช่องค้นหา
-        'input_text': '#ffffff',     # สีตัวหนังสือในช่องค้นหา (ขาว)
-        'header_bg': '#161b22',
-        'table_bg_norm': '#0d1117',
-        'table_bg_alt': '#1f2428',
-        'accent': '#238636'
-    }
+    # Dark Mode: เปลี่ยนแค่พื้นหลังหลัก กับ สีตัวหนังสือหัวข้อ
+    main_bg = '#262730'      # พื้นหลังสีเทาเข้ม
+    main_text = '#ffffff'    # ตัวหนังสือหัวข้อสีขาว
+    header_bg = '#262730'    # Header สีเดียวกับพื้นหลัง
 else:
-    # Light Mode (ปรับสีให้อ่านง่าย สบายตา)
-    theme_colors = {
-        'bg_main': '#f8fafc',
-        'bg_sidebar': '#f1f5f9',
-        'text_main': '#1e293b',      # สีเทาเข้มเกือบดำ (อ่านง่าย)
-        'input_bg': '#ffffff',       # สีพื้นช่องค้นหา (ขาว)
-        'input_text': '#000000',     # สีตัวหนังสือในช่องค้นหา (ดำสนิท)
-        'header_bg': '#ffffff',
-        'table_bg_norm': '#ffffff',
-        'table_bg_alt': '#e2e8f0',   # สีเทาฟ้าอ่อนๆ
-        'accent': '#059669'
-    }
+    # Light Mode:
+    main_bg = '#f0f2f6'      # พื้นหลังสีเทาอ่อนสบายตา
+    main_text = '#31333f'    # ตัวหนังสือหัวข้อสีเทาเข้ม
+    header_bg = '#f0f2f6'
 
-# --- CSS Injection (แก้บั๊ก Sidebar และ Input) ---
+# --- Fixed Colors (สีที่ไม่เปลี่ยนตาม Theme) ---
+fixed_colors = {
+    'sidebar_bg': '#f8fafc',     # Sidebar สีเทาขาวเสมอ
+    'sidebar_text': '#1e293b',   # Sidebar ตัวหนังสือเข้มเสมอ
+    'input_bg': '#ffffff',       # ช่องค้นหาขาวเสมอ
+    'input_text': '#000000',     # ตัวหนังสือในช่องค้นหาดำเสมอ
+    'table_bg_norm': '#ffffff',  # ตารางพื้นขาว
+    'table_bg_alt': '#f1f5f9',   # ตารางสลับสีเทาอ่อน
+    'table_text': '#1e293b'      # ตัวหนังสือในตารางสีเข้ม
+}
+
+# --- CSS Injection ---
 st.markdown(
     f"""
     <style>
-    /* 1. สีพื้นหลังหลัก */
+    /* 1. พื้นหลังหลัก (เปลี่ยนตาม Dark/Light) */
     .stApp {{
-        background-color: {theme_colors['bg_main']};
-        color: {theme_colors['text_main']};
+        background-color: {main_bg};
+        color: {main_text};
     }}
     
-    /* 2. สีพื้นหลัง Sidebar */
+    /* 2. Sidebar (Fix: Light Mode เสมอ) */
     section[data-testid="stSidebar"] {{
-        background-color: {theme_colors['bg_sidebar']};
+        background-color: {fixed_colors['sidebar_bg']};
+    }}
+    /* บังคับตัวหนังสือใน Sidebar ให้เป็นสีเข้มเสมอ (แม้อยู่ใน Dark Mode) */
+    section[data-testid="stSidebar"] p, 
+    section[data-testid="stSidebar"] span, 
+    section[data-testid="stSidebar"] div,
+    section[data-testid="stSidebar"] label {{
+        color: {fixed_colors['sidebar_text']} !important;
     }}
     
-    /* 3. Sticky Header (เอา visibility: hidden ออก เพื่อให้ปุ่มเมนูยังอยู่) */
+    /* 3. ช่องค้นหา (Fix: พื้นขาว ตัวหนังสือดำ) */
+    div[data-baseweb="input"] {{
+        background-color: {fixed_colors['input_bg']} !important;
+        border: 1px solid #ccc !important;
+        border-radius: 6px !important;
+    }}
+    input[type="text"] {{
+        color: {fixed_colors['input_text']} !important;
+        -webkit-text-fill-color: {fixed_colors['input_text']} !important;
+        caret-color: {fixed_colors['input_text']} !important;
+    }}
+    
+    /* 4. Sticky Header */
     .sticky-top-container {{
         position: sticky;
         top: 0;
         z-index: 990;
-        background-color: {theme_colors['header_bg']};
+        background-color: {header_bg}; /* เปลี่ยนตามพื้นหลังหลัก */
         padding: 15px 20px;
-        border-bottom: 2px solid #cbd5e1;
-        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        border-bottom: 1px solid rgba(128,128,128, 0.2);
         margin-left: -1rem;
         margin-right: -1rem;
     }}
     
-    /* 4. ปรับช่องค้นหา (Search Box) ให้ชัด */
-    div[data-baseweb="input"] {{
-        background-color: {theme_colors['input_bg']} !important;
-        border: 1px solid #94a3b8 !important; /* เส้นขอบชัดขึ้น */
-        border-radius: 8px !important;
-    }}
-    
-    /* บังคับสีตัวหนังสือใน Input ให้ตัดกับพื้นหลัง */
-    input[type="text"] {{
-        color: {theme_colors['input_text']} !important;
-        -webkit-text-fill-color: {theme_colors['input_text']} !important;
-        caret-color: {theme_colors['input_text']} !important;
-        font-weight: 500;
-    }}
-    
-    /* ปรับแต่งปุ่มวันที่ */
-    .date-badge {{
-        background-color: {theme_colors['accent']};
-        color: white;
-        padding: 6px 15px;
-        border-radius: 20px;
-        font-size: 1rem;
-        font-weight: 600;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        display: inline-block;
-    }}
-    
+    /* 5. ปรับสีหัวข้อต่างๆ ให้ชัดเจนตามพื้นหลัง */
     .app-title {{
         font-size: 1.8rem;
         font-weight: 800;
-        color: {theme_colors['text_main']};
-        margin-bottom: 8px;
+        color: {main_text};
+        margin-bottom: 5px;
+    }}
+    .search-label {{
+        font-weight: bold; 
+        margin-bottom: 5px; 
+        font-size: 1.1rem;
+        color: {main_text};
     }}
     
-    /* ซ่อน Header มาตรฐานของ Streamlit บางส่วน (แต่เก็บปุ่มเมนูไว้) */
+    /* ซ่อน Header เดิม */
     header[data-testid="stHeader"] {{
         background-color: rgba(0,0,0,0);
     }}
@@ -159,22 +153,25 @@ def load_data_from_github():
         return None
 
 # ==========================================
-# SIDEBAR (เมนูควบคุม)
+# SIDEBAR (Fix Light Mode Style)
 # ==========================================
 with st.sidebar:
     st.title("⚙️ เมนูหลัก")
     
-    # 1. Theme Switcher
+    # Theme Toggle
     st.write("**รูปแบบการแสดงผล**")
     is_dark = st.session_state.theme == 'dark'
-    if st.toggle("🌙 โหมดกลางคืน (Dark)", value=is_dark):
+    if st.toggle("🌙 พื้นหลังสีเข้ม (Dark Background)", value=is_dark):
         st.session_state.theme = 'dark'
+        st.rerun()
     else:
-        st.session_state.theme = 'light'
+        if st.session_state.theme == 'dark':
+            st.session_state.theme = 'light'
+            st.rerun()
         
     st.divider()
     
-    # 2. Login System
+    # Login System
     st.write("🔐 **สำหรับเจ้าหน้าที่**")
     if "logged_in" not in st.session_state:
         st.session_state.logged_in = False
@@ -187,10 +184,8 @@ with st.sidebar:
             st.rerun()
     else:
         st.info(f"สถานะ: Admin")
-        
-        # Upload Section
         st.markdown("---")
-        st.write("📤 **อัปเดตฐานข้อมูล**")
+        st.write("📥 **อัปเดตฐานข้อมูล**")
         uploaded_file = st.file_uploader("เลือกไฟล์ Excel", type=['xlsx', 'xls'])
         
         if uploaded_file:
@@ -221,7 +216,6 @@ report_date_str = "-"
 if df is not None:
     df.columns = df.columns.astype(str).str.strip()
     
-    # Date Extraction
     if 'd1' in df.columns and not df.empty:
         try:
             raw = df['d1'].iloc[0]
@@ -231,13 +225,11 @@ if df is not None:
                 except: report_date_str = str(raw)
         except: pass
 
-    # Data Preparation
     trade_col = next((c for c in df.columns if c.lower().replace(" ", "") == "tradename"), None)
     df['TradeName'] = df[trade_col].fillna("-") if trade_col else "-"
     df['LotNo'] = df.get('LotNo', pd.Series(['-']*len(df))).fillna("-")
     df['price'] = df.get('price', pd.Series([0]*len(df))).fillna(0)
     
-    # Concatenate Name safely
     df['DisplayName'] = ""
     if 'NAME1' in df.columns: df['DisplayName'] += df['NAME1'].fillna("").astype(str) + " "
     if 'CONTENT' in df.columns: df['DisplayName'] += df['CONTENT'].fillna("").astype(str) + " "
@@ -248,7 +240,7 @@ if df is not None:
     unit = df['minofLotPack'].astype(str) if 'minofLotPack' in df.columns else ""
     df['QtyDisplay'] = amt + " x " + unit
 
-# --- UI HEADER (Sticky) ---
+# --- UI HEADER ---
 st.markdown('<div class="sticky-top-container">', unsafe_allow_html=True)
 c1, c2 = st.columns([0.65, 0.35])
 
@@ -256,18 +248,19 @@ with c1:
     st.markdown(f'''
         <div class="app-title">🏥 ระบบสืบค้นคลังยา</div>
         <div style="margin-top:5px;">
-            <span class="date-badge">📅 ข้อมูลวันที่: {report_date_str}</span>
+            <span style="background-color:#059669; color:white; padding:5px 12px; border-radius:15px; font-weight:bold;">
+                📅 ข้อมูลวันที่: {report_date_str}
+            </span>
         </div>
     ''', unsafe_allow_html=True)
 
 with c2:
-    # แก้ไขช่องค้นหา: ใส่ Label ไว้ด้านบนชัดเจน และปรับ Input
-    st.markdown('<div style="font-weight:bold; margin-bottom:5px; font-size:1.1rem;">🔍 ค้นหารายการยา</div>', unsafe_allow_html=True)
+    st.markdown('<div class="search-label">🔍 ค้นหารายการยา</div>', unsafe_allow_html=True)
     search_query = st.text_input("Search", "", placeholder="พิมพ์ชื่อยา, รหัส หรือ Lot...", label_visibility="collapsed")
 
 st.markdown('</div>', unsafe_allow_html=True)
 
-# --- RESULT TABLE ---
+# --- RESULT TABLE (FIXED LIGHT MODE) ---
 if df is not None:
     if search_query:
         mask = (
@@ -288,7 +281,6 @@ if df is not None:
         final_cols = [c for c in ['ชื่อรายการ', 'รหัส', 'Tradename', 'คงเหลือ', 'ทุน', 'Lot', 'EXP'] if c in table.columns]
         table = table[final_cols].reset_index(drop=True)
 
-        # Styling Logic
         group_ids = (table['ชื่อรายการ'] != table['ชื่อรายการ'].shift()).cumsum()
         rows_alt = table.index[group_ids % 2 == 1]
         rows_norm = table.index[group_ids % 2 == 0]
@@ -299,10 +291,19 @@ if df is not None:
         if 'ทุน' in table.columns: 
             styler = styler.format({'ทุน': '{:,.2f}'})
 
-        # Apply Colors
-        styler = styler.set_properties(subset=pd.IndexSlice[rows_alt, :], **{'background-color': theme_colors['table_bg_alt']})
-        styler = styler.set_properties(subset=pd.IndexSlice[rows_norm, :], **{'background-color': theme_colors['table_bg_norm']})
-        styler = styler.set_properties(**{'color': theme_colors['text_main']})
+        # --- Force Colors to Light Mode Style Only ---
+        # พื้นสลับ (เทาอ่อน)
+        styler = styler.set_properties(
+            subset=pd.IndexSlice[rows_alt, :], 
+            **{'background-color': fixed_colors['table_bg_alt']}
+        )
+        # พื้นปกติ (ขาว)
+        styler = styler.set_properties(
+            subset=pd.IndexSlice[rows_norm, :], 
+            **{'background-color': fixed_colors['table_bg_norm']}
+        )
+        # ตัวหนังสือ (สีเข้มเสมอ)
+        styler = styler.set_properties(**{'color': fixed_colors['table_text']})
 
         st.dataframe(styler, use_container_width=True, hide_index=True, height=600)
     else:
