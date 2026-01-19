@@ -49,22 +49,45 @@ st.markdown(
     section[data-testid="stSidebar"] div,
     section[data-testid="stSidebar"] label {{ color: {fixed_colors['sidebar_text']} !important; }}
     
-    /* --- 1. SEARCH BOX STYLING (เฉพาะช่องค้นหาในหน้าหลัก) --- */
-    /* Target ช่อง Input ที่อยู่ใน Main Area เท่านั้น (ไม่รวม Sidebar) */
+    /* --- 1. SEARCH BOX (หน้าหลัก) --- */
     section[data-testid="stMain"] div[data-baseweb="input"] {{
-        background-color: #ffffff !important; /* พื้นหลังสีขาว */
-        border: 2px solid #CBD5E1 !important; /* เพิ่มขอบให้ชัด */
+        background-color: #ffffff !important;
+        border: 2px solid #CBD5E1 !important;
         border-radius: 8px !important;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.05) !important; /* เงาเล็กน้อย */
+        box-shadow: 0 2px 4px rgba(0,0,0,0.05) !important;
     }}
-    /* สีตัวอักษรในช่องค้นหา */
     section[data-testid="stMain"] input {{
         color: #1e293b !important;
     }}
 
-    /* --- 2. PASSWORD INPUT (ใน Sidebar) --- */
-    /* ไม่มีการเขียน CSS ทับส่วนนี้ เพื่อให้เป็น Default System Style ตามที่ต้องการ */
+    /* --- 2. PASSWORD INPUT (แก้ไขตามสั่ง) --- */
     
+    /* A. ตัวหนังสือสีขาว */
+    input[type="password"] {{
+        color: #ffffff !important;
+        -webkit-text-fill-color: #ffffff !important;
+        caret-color: #ffffff !important;
+    }}
+    
+    /* B. พื้นหลังช่องรหัส (ต้องเข้มเพื่อให้เห็นตัวหนังสือสีขาว) */
+    div[data-testid="stSidebar"] div[data-baseweb="input"] {{
+        background-color: #334155 !important; /* สีเทาเข้มสวยๆ */
+        border: 1px solid #475569 !important;
+        border-radius: 6px !important;
+    }}
+    
+    /* C. จัดปุ่มลูกตา (Eye Icon) ชิดขวาและขนาดพอดี */
+    div[data-testid="stSidebar"] div[data-baseweb="input"] > div:last-child {{
+        width: fit-content !important; /* ความกว้างเท่าไอคอน */
+        margin-left: auto !important;  /* ดันไปชิดขวาสุด */
+        padding-right: 8px !important; /* เว้นระยะขอบขวานิดหน่อย */
+        background-color: transparent !important;
+    }}
+    /* ปรับสีไอคอนลูกตาให้สว่างขึ้นเพื่อให้เห็นบนพื้นหลังเข้ม */
+    div[data-testid="stSidebar"] div[data-baseweb="input"] svg {{
+        fill: #94a3b8 !important;
+    }}
+
     /* Sticky Header */
     .sticky-top-container {{
         position: sticky; top: 0; z-index: 990;
@@ -192,7 +215,7 @@ with st.sidebar:
 
     if not st.session_state.logged_in:
         with st.form(key='login_form'):
-            # ช่องนี้จะแสดงผลแบบ Default เพราะไม่มี CSS ไปกระทบ
+            # ช่องรหัสผ่าน: สีพื้นจะเปลี่ยนตาม CSS ด้านบน
             password = st.text_input("รหัสผ่าน Admin", type="password")
             submit_button = st.form_submit_button("เข้าสู่ระบบ")
             
