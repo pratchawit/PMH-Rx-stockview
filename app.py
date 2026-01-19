@@ -49,7 +49,21 @@ st.markdown(
     section[data-testid="stSidebar"] div,
     section[data-testid="stSidebar"] label {{ color: {fixed_colors['sidebar_text']} !important; }}
     
-    /* --- INPUT FIELDS: Reverted to Default (ลบ CSS แต่งช่องออกทั้งหมด) --- */
+    /* --- 1. SEARCH BOX STYLING (เฉพาะช่องค้นหาในหน้าหลัก) --- */
+    /* Target ช่อง Input ที่อยู่ใน Main Area เท่านั้น (ไม่รวม Sidebar) */
+    section[data-testid="stMain"] div[data-baseweb="input"] {{
+        background-color: #ffffff !important; /* พื้นหลังสีขาว */
+        border: 2px solid #CBD5E1 !important; /* เพิ่มขอบให้ชัด */
+        border-radius: 8px !important;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.05) !important; /* เงาเล็กน้อย */
+    }}
+    /* สีตัวอักษรในช่องค้นหา */
+    section[data-testid="stMain"] input {{
+        color: #1e293b !important;
+    }}
+
+    /* --- 2. PASSWORD INPUT (ใน Sidebar) --- */
+    /* ไม่มีการเขียน CSS ทับส่วนนี้ เพื่อให้เป็น Default System Style ตามที่ต้องการ */
     
     /* Sticky Header */
     .sticky-top-container {{
@@ -178,6 +192,7 @@ with st.sidebar:
 
     if not st.session_state.logged_in:
         with st.form(key='login_form'):
+            # ช่องนี้จะแสดงผลแบบ Default เพราะไม่มี CSS ไปกระทบ
             password = st.text_input("รหัสผ่าน Admin", type="password")
             submit_button = st.form_submit_button("เข้าสู่ระบบ")
             
