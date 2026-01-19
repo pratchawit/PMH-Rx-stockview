@@ -9,7 +9,6 @@ st.set_page_config(page_title="Inventory System", page_icon="🏥", layout="wide
 # ==========================================
 # 1. จัดการ THEME (Light / Dark)
 # ==========================================
-# สร้าง Session State เก็บค่า Theme
 if 'theme' not in st.session_state:
     st.session_state.theme = 'light'
 
@@ -19,45 +18,37 @@ def toggle_theme():
     else:
         st.session_state.theme = 'light'
 
-# กำหนด Palette สีตามโหมด
 if st.session_state.theme == 'dark':
     theme_colors = {
-        'bg_main': '#0e1117',        # สีพื้นหลังหลัก (Dark)
-        'bg_sticky': '#1f2937',      # สีพื้นหลังหัวเว็บ
-        'text_main': '#e5e7eb',      # สีตัวหนังสือ
-        'table_bg_1': '#1f2937',     # สีพื้นตารางปกติ
-        'table_bg_2': '#374151',     # สีพื้นตาราง (กลุ่มที่ระบายสี)
-        'border': '#374151',         # สีเส้นขอบ
-        'date_badge_bg': '#064e3b',  # สีพื้นปุ่มวันที่
-        'date_badge_txt': '#ecfdf5'  # สีตัวหนังสือวันที่
+        'bg_main': '#0e1117',
+        'bg_sticky': '#1f2937',
+        'text_main': '#e5e7eb',
+        'table_bg_1': '#1f2937',
+        'table_bg_2': '#374151',
+        'border': '#374151',
+        'date_badge_bg': '#064e3b',
+        'date_badge_txt': '#ecfdf5'
     }
 else:
-    # Light Mode (ปรับสีให้อ่านง่ายขึ้น เป็นเทาอ่อน สบายตา)
     theme_colors = {
         'bg_main': '#ffffff',
         'bg_sticky': '#ffffff',
         'text_main': '#1f2937',
-        'table_bg_1': '#ffffff',     # ขาว
-        'table_bg_2': '#f3f4f6',     # เทาอ่อนมาก (อ่านง่ายกว่าสีฟ้า)
+        'table_bg_1': '#ffffff',
+        'table_bg_2': '#f3f4f6',
         'border': '#e5e7eb',
         'date_badge_bg': '#d1fae5',
         'date_badge_txt': '#065f46'
     }
 
-# --- CSS Injection ---
-# เราต้องฝัง CSS เพื่อบังคับสีหน้าเว็บให้เปลี่ยนตาม Theme ที่เราเลือก
 st.markdown(
     f"""
     <style>
-    /* บังคับสีพื้นหลังของ App */
     .stApp {{
         background-color: {theme_colors['bg_main']};
         color: {theme_colors['text_main']};
     }}
-    
     header {{visibility: hidden;}}
-    
-    /* Sticky Header */
     .sticky-top-container {{
         position: sticky;
         top: 0;
@@ -67,8 +58,6 @@ st.markdown(
         border-bottom: 2px solid {theme_colors['border']};
         transition: background-color 0.3s;
     }}
-    
-    /* กล่องวันที่ */
     .date-badge {{
         background-color: {theme_colors['date_badge_bg']};
         color: {theme_colors['date_badge_txt']};
@@ -79,15 +68,12 @@ st.markdown(
         border: 1px solid {theme_colors['border']};
         display: inline-block;
     }}
-
     .app-title {{
         font-size: 1.8rem;
         font-weight: bold;
         color: {theme_colors['text_main']};
         margin-bottom: 5px;
     }}
-    
-    /* ปรับแต่ง Input Box ให้เข้ากับ Theme */
     div[data-baseweb="input"] {{
         background-color: {theme_colors['bg_main']} !important;
         border-color: {theme_colors['border']} !important; 
@@ -137,7 +123,6 @@ def load_data_from_github():
         try: df = pd.read_excel(io.BytesIO(file_content))
         except: df = pd.read_excel(io.BytesIO(file_content), engine='xlrd')
         
-        # แก้ภาษา
         for col in df.select_dtypes(include=['object']).columns:
             df[col] = df[col].apply(fix_thai_encoding)
         df.columns = [fix_thai_encoding(c) for c in df.columns]
@@ -146,11 +131,9 @@ def load_data_from_github():
         return None
 
 # ==========================================
-# Sidebar (Admin & Theme Switcher)
+# Sidebar
 # ==========================================
 st.sidebar.title("⚙️ ตั้งค่า")
-
-# --- ปุ่มสลับ Theme ---
 st.sidebar.write("🎨 **รูปแบบการแสดงผล**")
 is_dark = st.session_state.theme == 'dark'
 if st.sidebar.toggle("🌙 Dark Mode", value=is_dark):
@@ -160,7 +143,6 @@ else:
 
 st.sidebar.markdown("---")
 st.sidebar.title("🔧 เจ้าหน้าที่")
-
 if st.sidebar.checkbox("เข้าสู่ระบบ (Admin)"):
     password = st.sidebar.text_input("รหัสผ่าน", type="password")
     if password == "rb,kp@10884":
@@ -200,15 +182,26 @@ if df is not None:
                 except: report_date_str = str(raw)
         except: pass
 
-    # 2. Prepare Data
+    # 2. Prepare Data (แก้ Error ตรงนี้ครับ)
     trade_col = next((c for c in df.columns if c.lower().replace(" ", "") == "tradename"), None)
     df['TradeName'] = df[trade_col].fillna("-") if trade_col else "-"
     df['LotNo'] = df.get('LotNo', pd.Series(['-']*len(df))).fillna("-")
     df['price'] = df.get('price', pd.Series([0]*len(df))).fillna(0)
     
-    parts = [df[c].fillna("").astype(str) for c in ['NAME1', 'CONTENT', 'TYPE'] if c in df.columns]
-    df['DisplayName'] = " ".join(parts).strip() if parts else "" # Join แบบปลอดภัยกว่าเดิม
-    df['DisplayName'] = df['NAME1'].astype(str) + " " + df['CONTENT'].fillna("").astype(str) + " " + df['TYPE'].fillna("").astype(str)
+    # --- ส่วนที่แก้ไข: รวมชื่อด้วยวิธีดั้งเดิมที่ปลอดภัยกว่า ---
+    # สร้างคอลัมน์ว่างก่อน
+    df['DisplayName'] = ""
+    
+    # ค่อยๆ ต่อ string ทีละคอลัมน์
+    if 'NAME1' in df.columns:
+        df['DisplayName'] += df['NAME1'].fillna("").astype(str) + " "
+    if 'CONTENT' in df.columns:
+        df['DisplayName'] += df['CONTENT'].fillna("").astype(str) + " "
+    if 'TYPE' in df.columns:
+        df['DisplayName'] += df['TYPE'].fillna("").astype(str)
+        
+    df['DisplayName'] = df['DisplayName'].str.strip() # ตัดช่องว่างหัวท้ายทิ้ง
+    # ----------------------------------------------------
 
     amt = df['Amount1'].astype(str) if 'Amount1' in df.columns else "0"
     unit = df['minofLotPack'].astype(str) if 'minofLotPack' in df.columns else ""
@@ -248,27 +241,17 @@ if df is not None:
         final_cols = [c for c in ['ชื่อรายการ', 'รหัส', 'Tradename', 'คงเหลือ', 'ทุน', 'Lot', 'EXP'] if c in table.columns]
         table = table[final_cols].reset_index(drop=True)
 
-        # --- Styling & Coloring ---
+        # Styling
         group_ids = (table['ชื่อรายการ'] != table['ชื่อรายการ'].shift()).cumsum()
-        rows_to_color = table.index[group_ids % 2 == 1] # แถวที่ต้องลงสี
+        rows_to_color = table.index[group_ids % 2 == 1]
         
         styler = table.style.format(precision=2)
         if 'EXP' in table.columns: styler = styler.format({'EXP': lambda x: x.strftime('%d/%m/%Y') if pd.notnull(x) else "-"})
         if 'ทุน' in table.columns: styler = styler.format({'ทุน': '{:,.2f}'})
 
-        # Apply Theme Colors to Table
-        # 1. ลงสีพื้นหลังให้แถวที่เป็นกลุ่มเลขคี่
-        styler = styler.set_properties(
-            subset=pd.IndexSlice[rows_to_color, :], 
-            **{'background-color': theme_colors['table_bg_2']}
-        )
-        # 2. ลงสีพื้นหลังให้แถวปกติ (เพื่อให้เข้ากับ Dark Mode)
+        styler = styler.set_properties(subset=pd.IndexSlice[rows_to_color, :], **{'background-color': theme_colors['table_bg_2']})
         rows_normal = table.index[group_ids % 2 == 0]
-        styler = styler.set_properties(
-            subset=pd.IndexSlice[rows_normal, :], 
-            **{'background-color': theme_colors['table_bg_1']}
-        )
-        # 3. กำหนดสีตัวหนังสือ
+        styler = styler.set_properties(subset=pd.IndexSlice[rows_normal, :], **{'background-color': theme_colors['table_bg_1']})
         styler = styler.set_properties(**{'color': theme_colors['text_main']})
 
         st.dataframe(styler, use_container_width=True, hide_index=True, height=650)
