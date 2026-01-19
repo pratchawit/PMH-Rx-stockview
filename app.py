@@ -10,23 +10,35 @@ st.set_page_config(page_title="Inventory System", page_icon="🏥", layout="wide
 st.markdown(
     """
     <style>
-    header {visibility: hidden;} /* ซ่อน Header ของ Streamlit */
+    header {visibility: hidden;}
     
     .sticky-top-container {
         position: sticky;
         top: 0;
         z-index: 1000;
         background-color: white;
-        padding-top: 10px;
-        padding-bottom: 10px;
-        border-bottom: 2px solid #e5e7eb;
+        padding: 15px 0;
+        border-bottom: 3px solid #047857; /* เส้นสีเขียวเข้มใต้หัวเว็บ */
         box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
     }
     
-    .report-date {
-        color: #047857; /* สีเขียวเข้ม */
+    /* กล่องวันที่ */
+    .date-badge {
+        background-color: #d1fae5;
+        color: #065f46;
+        padding: 5px 12px;
+        border-radius: 20px;
         font-weight: bold;
-        font-size: 1.1rem;
+        font-size: 1rem;
+        border: 1px solid #34d399;
+        display: inline-block;
+    }
+
+    .app-title {
+        font-size: 1.8rem;
+        font-weight: bold;
+        color: #1f2937;
+        margin-bottom: 5px;
     }
     </style>
     """,
@@ -35,6 +47,16 @@ st.markdown(
 
 # --- Config ---
 TARGET_FILE_NAME = "InvLotFrmByLot.xlsx" 
+
+# --- ฟังก์ชันแก้ภาษาต่างดาว (The Magic Function 🪄) ---
+def fix_thai_encoding(text):
+    if not isinstance(text, str):
+        return text
+    try:
+        # สูตรแก้ภาษาต่างดาว: แปลงกลับเป็น cp1252 แล้วอ่านใหม่ด้วย cp874 (ไทย)
+        return text.encode('cp1252').decode('cp874')
+    except:
+        return text
 
 # --- ฟังก์ชันเชื่อมต่อ GitHub ---
 def upload_to_github(file_content):
@@ -66,10 +88,20 @@ def load_data_from_github():
         contents = repo.get_contents(TARGET_FILE_NAME)
         file_content = contents.decoded_content
         
+        # ลองอ่านไฟล์
         try:
             df = pd.read_excel(io.BytesIO(file_content))
         except:
+            # ถ้าอ่านปกติไม่ได้ ให้ลอง engine สำหรับไฟล์รุ่นเก่า
             df = pd.read_excel(io.BytesIO(file_content), engine='xlrd')
+        
+        # --- ขั้นตอนการแก้ภาษาต่างดาว ---
+        # วนลูปทุกคอลัมน์ ถ้าเป็นตัวหนังสือ ให้ลองแก้ภาษาดู
+        for col in df.select_dtypes(include=['object']).columns:
+            df[col] = df[col].apply(fix_thai_encoding)
+            
+        # แก้ชื่อหัวตารางด้วย (เผื่อหัวตารางก็อ่านไม่ออก)
+        df.columns = [fix_thai_encoding(c) for c in df.columns]
             
         return df
     except Exception as e:
@@ -90,7 +122,6 @@ if st.sidebar.checkbox("เข้าสู่ระบบ (Admin)"):
         uploaded_file = st.sidebar.file_uploader("เลือกไฟล์ Excel", type=['xlsx', 'xls'])
         
         if uploaded_file:
-            st.warning("💡 ควร Save As เป็น .xlsx ก่อนอัปโหลดเพื่อแก้ปัญหาภาษาต่างดาว")
             if st.sidebar.button("🚀 อัปโหลดเข้า Server"):
                 with st.sidebar.status("กำลังทำงาน...", expanded=True) as status:
                     bytes_data = uploaded_file.getvalue()
@@ -103,43 +134,38 @@ if st.sidebar.checkbox("เข้าสู่ระบบ (Admin)"):
                     else:
                         status.update(label="❌ ล้มเหลว", state="error")
                         st.sidebar.error(msg)
-    elif password:
-        st.sidebar.error("รหัสผิด")
 
 # ==========================================
-# ส่วนประมวลผลข้อมูล (Data Preparation)
+# Data Processing
 # ==========================================
-# โหลดข้อมูลไว้ก่อนแสดงผล
 with st.spinner('กำลังดึงข้อมูล...'):
     df = load_data_from_github()
 
-# เตรียมตัวแปรวันที่สำหรับแสดงผล
-report_date_str = "ไม่พบข้อมูล"
+report_date_str = "รอการอัปเดต"
 
 if df is not None:
-    # Clean Column Names
+    # Clean Columns
     df.columns = df.columns.astype(str).str.strip()
     
-    # --- ดึงวันที่จาก d1 มาเก็บไว้แสดงหัวเว็บ ---
+    # --- ดึงวันที่ (d1) มาโชว์ ---
     if 'd1' in df.columns and not df.empty:
         try:
-            raw_date = df['d1'].iloc[0] # เอาแถวแรกมาดู
-            # ถ้าเป็น DateTime Object
-            if isinstance(raw_date, pd.Timestamp):
-                report_date_str = raw_date.strftime('%d/%m/%Y')
-            else:
-                # ถ้าเป็น String ลองแปลงดู
-                try:
-                    dt_obj = pd.to_datetime(raw_date)
-                    report_date_str = dt_obj.strftime('%d/%m/%Y')
-                except:
-                    # ถ้าแปลงไม่ได้จริงๆ ก็โชว์ดิบๆ
-                    report_date_str = str(raw_date)
+            raw_date = df['d1'].iloc[0]
+            if pd.notnull(raw_date):
+                if isinstance(raw_date, pd.Timestamp):
+                    report_date_str = raw_date.strftime('%d/%m/%Y')
+                else:
+                    # ถ้าเป็น String (เช่น 2025-12-29) ลองแก้ภาษาก่อนแล้วค่อยแปลง
+                    date_text = fix_thai_encoding(str(raw_date))
+                    try:
+                        dt = pd.to_datetime(date_text)
+                        report_date_str = dt.strftime('%d/%m/%Y')
+                    except:
+                        report_date_str = date_text
         except:
             pass
-            
-    # --- Clean Data สำหรับตาราง ---
-    
+
+    # --- เตรียมข้อมูลแสดงผล ---
     # TradeName
     trade_col = next((c for c in df.columns if c.lower().replace(" ", "") == "tradename"), None)
     if trade_col: df['TradeName'] = df[trade_col].fillna("-")
@@ -161,30 +187,27 @@ if df is not None:
     df['QtyDisplay'] = amt_col + " x " + unit_col
 
 # ==========================================
-# ส่วนแสดงผล (UI)
+# UI แสดงผล
 # ==========================================
 
-# 1. Sticky Header Container
+# 1. Sticky Header
 with st.container():
     st.markdown('<div class="sticky-top-container">', unsafe_allow_html=True)
     
-    c1, c2 = st.columns([0.6, 0.4])
+    c1, c2 = st.columns([0.65, 0.35])
     with c1:
-        st.title("🏥 ระบบสืบค้นคลังยา")
-        # แสดงวันที่ตรงนี้ (ใต้ชื่อระบบ หรือข้างๆ)
-        if df is not None:
-            st.markdown(f'<span class="report-date">📅 ข้อมูลคงคลัง ณ วันที่: {report_date_str}</span>', unsafe_allow_html=True)
+        st.markdown('<div class="app-title">🏥 ระบบสืบค้นคลังยา</div>', unsafe_allow_html=True)
+        # แสดงวันที่ตรงนี้
+        st.markdown(f'<span class="date-badge">📅 ข้อมูลวันที่: {report_date_str}</span>', unsafe_allow_html=True)
     
     with c2:
-        # ช่องค้นหา (ขยับลงมานิดนึงให้สวย)
-        st.write("") 
+        st.write("") # เว้นบรรทัด
         search_query = st.text_input("🔍 ค้นหาด่วน", "", placeholder="ชื่อยา, รหัส, Lot...", label_visibility="collapsed")
     
     st.markdown('</div>', unsafe_allow_html=True)
 
 # 2. Table Result
 if df is not None:
-    # --- Filter ---
     if search_query:
         mask = (
             df['DisplayName'].str.contains(search_query, case=False, na=False) |
@@ -197,7 +220,7 @@ if df is not None:
         display_df = df
 
     if not display_df.empty:
-        # เลือก Column (ตัด d1 ออก)
+        # Mapping Column
         cols_map = {
             'DisplayName': 'ชื่อรายการ', 
             'CODE1': 'รหัส', 
@@ -208,23 +231,19 @@ if df is not None:
             'ExpDate': 'EXP'
         }
         
-        # เลือกเฉพาะที่มีจริงใน df
         valid_cols = [c for c in cols_map.keys() if c in display_df.columns]
-        
         table_data = display_df[valid_cols].copy()
         table_data.rename(columns=cols_map, inplace=True)
         
-        # จัดลำดับคอลัมน์ให้สวยงาม
+        # Order columns
         desired_order = ['ชื่อรายการ', 'รหัส', 'Tradename', 'คงเหลือ', 'ทุน', 'Lot', 'EXP']
-        # กรองเอาเฉพาะที่มีอยู่จริง (กัน Error)
         final_cols = [c for c in desired_order if c in table_data.columns]
         table_data = table_data[final_cols]
 
-        # Format วันหมดอายุ
+        # Formatting
         if 'EXP' in table_data.columns:
             table_data['EXP'] = pd.to_datetime(table_data['EXP'], errors='coerce').dt.strftime('%d/%m/%Y').fillna("-")
             
-        # Format ราคา
         if 'ทุน' in table_data.columns:
             table_data['ทุน'] = table_data['ทุน'].apply(lambda x: f"{float(x):,.2f}" if isinstance(x, (int, float)) else x)
 
@@ -232,10 +251,10 @@ if df is not None:
             table_data,
             use_container_width=True,
             hide_index=True,
-            height=700
+            height=650
         )
     else:
         st.warning(f"ไม่พบข้อมูล '{search_query}'")
         
 else:
-    st.info("👋 กรุณาล็อกอินและอัปโหลดไฟล์ข้อมูล")
+    st.info("👋 ระบบพร้อมใช้งาน กรุณา Login เพื่ออัปโหลดข้อมูล")
