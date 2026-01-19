@@ -28,18 +28,18 @@ else:
     main_text = '#31333f'    # ตัวหนังสือหัวข้อสีเทาเข้ม
     header_bg = '#f0f2f6'
 
-# --- Fixed Colors (สีที่บังคับให้เหมือนเดิมตลอดกาล) ---
+# --- Fixed Colors ---
 fixed_colors = {
-    'sidebar_bg': '#f8fafc',     # Sidebar สีเทาขาวเสมอ
-    'sidebar_text': '#1e293b',   # Sidebar ตัวหนังสือเข้มเสมอ
-    'input_bg': '#ffffff',       # ช่องค้นหา/Login ขาวเสมอ
-    'input_text': '#000000',     # ตัวหนังสือในช่องค้นหาดำเสมอ
-    'table_bg_norm': '#ffffff',  # ตารางพื้นขาว
-    'table_bg_alt': '#f1f5f9',   # ตารางสลับสีเทาอ่อน
-    'table_text': '#1e293b'      # ตัวหนังสือในตารางสีเข้ม
+    'sidebar_bg': '#f8fafc',     
+    'sidebar_text': '#1e293b',   
+    'input_bg': '#ffffff',       
+    'input_text': '#000000',     
+    'table_bg_norm': '#ffffff',  
+    'table_bg_alt': '#f1f5f9',   
+    'table_text': '#1e293b'      
 }
 
-# --- CSS Injection (แก้บั๊ก Input สีดำ และปรับแต่ง Admin/Upload) ---
+# --- CSS Injection (รวมทุกการปรับแต่ง) ---
 st.markdown(
     f"""
     <style>
@@ -49,7 +49,7 @@ st.markdown(
         color: {main_text};
     }}
     
-    /* 2. Sidebar (Fix: Light Mode เสมอ) */
+    /* 2. Sidebar */
     section[data-testid="stSidebar"] {{
         background-color: {fixed_colors['sidebar_bg']};
     }}
@@ -60,7 +60,7 @@ st.markdown(
         color: {fixed_colors['sidebar_text']} !important;
     }}
     
-    /* 3. แก้ไข Input Fields (Login & Search) ให้เป็นขาว/ดำ เสมอ */
+    /* 3. Input Fields */
     div[data-baseweb="input"] {{
         background-color: {fixed_colors['input_bg']} !important;
         border: 1px solid #ccc !important;
@@ -98,42 +98,58 @@ st.markdown(
         font-size: 1.1rem;
         color: {main_text};
     }}
-    
     header[data-testid="stHeader"] {{
         background-color: rgba(0,0,0,0);
     }}
 
     /* ============================================================ */
-    /* 6. ส่วนที่เพิ่มใหม่: Modern Blue Upload & Admin Style */
+    /* NEW: Custom Styling */
     /* ============================================================ */
     
-    /* ปรับแต่งช่อง Upload File ให้เป็นสีน้ำเงิน */
+    /* 1. ปรับแต่งเมนู Toggle (Dark Mode) ให้มีแถบคาดสีเทา */
+    div[data-testid="stToggle"] {{
+        background-color: #E2E8F0; /* สีเทาเข้มขึ้นมาหน่อย */
+        padding: 15px;
+        border-radius: 8px;
+        border: 1px solid #CBD5E1;
+        margin-bottom: 10px;
+    }}
+    div[data-testid="stToggle"] label p {{
+        font-weight: bold;
+        font-size: 1rem;
+    }}
+
+    /* 2. File Uploader (Modern Blue Style) */
     [data-testid='stFileUploader'] section {{
-        background-color: #F0F9FF; /* พื้นหลังฟ้าอ่อน */
-        border: 2px dashed #2563EB; /* เส้นประสีน้ำเงินเข้ม */
+        background-color: #F0F9FF; 
+        border: 2px dashed #2563EB;
         border-radius: 10px;
         padding: 15px;
     }}
-    
-    /* เปลี่ยนสีไอคอน Upload และข้อความ */
     [data-testid='stFileUploader'] svg, 
     [data-testid='stFileUploader'] div {{
         fill: #2563EB !important;
-        color: #1E3A8A !important; /* สีกรมท่า */
+        color: #1E3A8A !important;
     }}
-
-    /* ปรับปุ่ม 'Browse files' */
     [data-testid='stFileUploader'] button {{
-        background-color: #2563EB; /* สีน้ำเงินสด */
+        background-color: #2563EB; 
         color: white !important;
         border: none;
-        border-radius: 5px;
-        transition: 0.3s;
     }}
-    [data-testid='stFileUploader'] button:hover {{
-        background-color: #1D4ED8; /* สีน้ำเงินเข้มเมื่อ Hover */
-        box-shadow: 0 4px 6px rgba(37, 99, 235, 0.3);
+
+    /* 3. ปุ่ม 'ออกจากระบบ' (Red-Orange) */
+    /* เทคนิค: เลือกปุ่มสุดท้ายใน Sidebar เสมอ */
+    section[data-testid="stSidebar"] .stButton:last-of-type button {{
+        background-color: #FF5722 !important; /* สีส้มแดง Red-Orange */
+        color: white !important;
+        border: none !important;
+        font-weight: bold;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.2);
     }}
+    section[data-testid="stSidebar"] .stButton:last-of-type button:hover {{
+        background-color: #E64A19 !important; /* สีเข้มขึ้นเมื่อ Hover */
+    }}
+
     </style>
     """,
     unsafe_allow_html=True
@@ -188,8 +204,7 @@ def load_data_from_github():
 with st.sidebar:
     st.title("⚙️ เมนูหลัก")
     
-    # Theme Toggle
-    st.write("**การแสดงผล**")
+    # --- ส่วนที่ 1: Dark Mode Toggle (มีแถบสีเทาคาดจาก CSS) ---
     is_dark = st.session_state.theme == 'dark'
     if st.toggle("🌙 Dark mode", value=is_dark):
         st.session_state.theme = 'dark'
@@ -213,7 +228,7 @@ with st.sidebar:
             st.success("✅ เข้าสู่ระบบแล้ว")
             st.rerun()
     else:
-        # --- ปรับส่วนแสดงผล ADMIN ให้เป็น Modern Blue ---
+        # Admin Box (Modern Blue)
         st.markdown("""
             <div style="
                 background-color: #EFF6FF; 
@@ -233,11 +248,11 @@ with st.sidebar:
         """, unsafe_allow_html=True)
         
         st.write("📥 **อัปเดตฐานข้อมูล**")
-        # CSS ที่ฉีดไปข้างบนจะทำให้ file_uploader ตัวนี้กลายเป็นสีฟ้าสวยงาม
         uploaded_file = st.file_uploader("เลือกไฟล์ Excel", type=['xlsx', 'xls'])
         
         if uploaded_file:
-            if st.button("🚀 อัปโหลดขึ้น Server", type="primary"):
+            # ปุ่มอัปโหลด (จะเป็นสี Default หรือสีฟ้าตาม Theme หลัก)
+            if st.button("🚀 อัปโหลดขึ้น Server"): 
                 with st.status("กำลังดำเนินการ...", expanded=True) as status:
                     success, msg = upload_to_github(uploaded_file.getvalue())
                     if success:
@@ -250,6 +265,7 @@ with st.sidebar:
                         st.error(msg)
         
         st.markdown("---")
+        # ปุ่มนี้จะถูก CSS จับและเปลี่ยนเป็นสีแดงส้ม (เพราะเป็นปุ่มสุดท้าย)
         if st.button("ออกจากระบบ"):
             st.session_state.logged_in = False
             st.rerun()
@@ -292,7 +308,6 @@ if df is not None:
 # --- UI HEADER (Sticky) ---
 st.markdown('<div class="sticky-top-container">', unsafe_allow_html=True)
 
-# Layout: แบ่งเป็น 3 ส่วน (Logo | Title | Search)
 c_logo, c_title, c_search = st.columns([0.15, 0.5, 0.35])
 
 with c_logo:
@@ -351,7 +366,7 @@ if df is not None:
         if 'ทุน' in table.columns: 
             styler = styler.format({'ทุน': '{:,.2f}'})
 
-        # Apply Colors (Fixed Light Mode Style)
+        # Apply Colors
         styler = styler.set_properties(subset=pd.IndexSlice[rows_alt, :], **{'background-color': fixed_colors['table_bg_alt']})
         styler = styler.set_properties(subset=pd.IndexSlice[rows_norm, :], **{'background-color': fixed_colors['table_bg_norm']})
         styler = styler.set_properties(**{'color': fixed_colors['table_text']})
