@@ -30,8 +30,6 @@ else:
 fixed_colors = {
     'sidebar_bg': '#f8fafc',     
     'sidebar_text': '#1e293b',   
-    'input_bg': '#ffffff',       
-    'input_text': '#000000',     
     'table_bg_norm': '#ffffff',  
     'table_bg_alt': '#f1f5f9',   
     'table_text': '#1e293b'      
@@ -51,18 +49,7 @@ st.markdown(
     section[data-testid="stSidebar"] div,
     section[data-testid="stSidebar"] label {{ color: {fixed_colors['sidebar_text']} !important; }}
     
-    /* --- 1. Input Fields (บังคับสีขาวทั้งหมด) --- */
-    div[data-baseweb="input"] {{
-        background-color: #ffffff !important; /* พื้นหลังสีขาว */
-        border: 1px solid #ccc !important;
-        border-radius: 6px !important;
-    }}
-    input[type="text"], input[type="password"] {{
-        color: #000000 !important; /* ตัวหนังสือสีดำ */
-        -webkit-text-fill-color: #000000 !important;
-        caret-color: #000000 !important;
-        background-color: transparent !important; /* ให้เห็นสีขาวจาก div แม่ */
-    }}
+    /* --- INPUT FIELDS: Reverted to Default (ลบ CSS แต่งช่องออกทั้งหมด) --- */
     
     /* Sticky Header */
     .sticky-top-container {{
@@ -111,13 +98,12 @@ st.markdown(
         background-color: #57C293 !important;
     }}
 
-    /* --- 3. Table Header Styling (Bold & Center) --- */
-    /* Target หัวตารางของ st.dataframe */
+    /* --- Table Header Styling (Bold & Center) --- */
     div[data-testid="stDataFrame"] div[role="columnheader"] {{
-        font-weight: 900 !important; /* ตัวหนา */
+        font-weight: 900 !important; 
         color: {main_text} !important;
-        background-color: #e0e0e0 !important; /* พื้นหลังหัวตารางสีเทาอ่อนให้เด่นขึ้น */
-        justify-content: center !important; /* จัดกึ่งกลางแนวนอน */
+        background-color: #e0e0e0 !important; 
+        justify-content: center !important; 
         text-align: center !important;
     }}
     </style>
@@ -192,7 +178,6 @@ with st.sidebar:
 
     if not st.session_state.logged_in:
         with st.form(key='login_form'):
-            # ช่อง Input สีขาวทั้งหมดตาม CSS ด้านบน
             password = st.text_input("รหัสผ่าน Admin", type="password")
             submit_button = st.form_submit_button("เข้าสู่ระบบ")
             
@@ -240,10 +225,9 @@ with st.sidebar:
                         st.error(msg)
         
         st.markdown("---")
-        # --- 2. LOGOUT BUTTON FIX ---
         if st.button("ออกจากระบบ", key="logout_btn"):
-            st.session_state.clear() # ล้างค่าทุกอย่าง
-            st.rerun() # รีโหลดหน้าเว็บใหม่ทันที
+            st.session_state.clear()
+            st.rerun()
 
 # ==========================================
 # MAIN CONTENT
