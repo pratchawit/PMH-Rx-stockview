@@ -95,13 +95,19 @@ st.markdown(
         background-color: #FF5722 !important; color: white !important; border: none !important; font-weight: bold;
     }}
     
-    /* Form Login Button Style (Green/Primary) */
-    /* ปรับแต่งปุ่มใน Form ให้ดูเด่น */
-    div[data-testid="stForm"] button {{
+    /* --- Form Login Button Style (PASTEL GREEN) --- */
+    /* แก้ไข: ระบุเจาะจงเฉพาะปุ่ม Submit (.stButton > button) ไม่ให้กระทบปุ่มลูกตาใน Input */
+    div[data-testid="stForm"] .stButton > button {{
         width: 100%;
-        background-color: #059669 !important; /* สีเขียว */
+        background-color: #66D9A5 !important; /* Pastel Green (Minty) */
         color: white !important;
         border: none !important;
+        font-weight: bold;
+        transition: 0.3s;
+    }}
+    div[data-testid="stForm"] .stButton > button:hover {{
+        background-color: #57C293 !important; /* เข้มขึ้นนิดหน่อยตอนเอาเมาส์ชี้ */
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
     }}
     </style>
     """, unsafe_allow_html=True
@@ -174,10 +180,9 @@ with st.sidebar:
         st.session_state.logged_in = False
 
     if not st.session_state.logged_in:
-        # --- ใช้ Form เพื่อแก้ปัญหา Login ยาก ---
         with st.form(key='login_form'):
+            # ช่องรหัสผ่าน (ตอนนี้ปุ่มดูรหัสจะกลับมาเป็นปกติ ชิดขวา ไม่เป็นแถบสีเขียวแล้ว)
             password = st.text_input("รหัสผ่าน Admin", type="password")
-            # ปุ่ม Submit จะ trigger เมื่อกดคลิก หรือ กด Enter ในช่อง input
             submit_button = st.form_submit_button("เข้าสู่ระบบ")
             
         if submit_button:
