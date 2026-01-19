@@ -14,13 +14,29 @@ st.set_page_config(
     initial_sidebar_state="expanded",
 )
 
-# =========================
-# 2) THEME (Hybrid System)
-# =========================
-if "theme" not in st.session_state:
-    st.session_state.theme = "light"
+TARGET_FILE_NAME = "InvLotFrmByLot.xlsx"
 
-if st.session_state.theme == "dark":
+# =========================
+# 2) Session defaults
+# =========================
+if "dark_mode" not in st.session_state:
+    st.session_state.dark_mode = False
+
+if "fast_mode" not in st.session_state:
+    st.session_state.fast_mode = True
+
+if "logged_in" not in st.session_state:
+    st.session_state.logged_in = False
+
+if "search_query" not in st.session_state:
+    st.session_state.search_query = ""
+
+# =========================
+# 3) Theme vars (คำนวณก่อน inject CSS)
+# =========================
+is_dark = bool(st.session_state.dark_mode)
+
+if is_dark:
     main_bg = "#262730"
     main_text = "#ffffff"
     header_bg = "#262730"
@@ -38,7 +54,7 @@ fixed_colors = {
 }
 
 # =========================
-# CSS Injection
+# 4) CSS Injection (รวม fix eye icon)
 # =========================
 st.markdown(
     f"""
@@ -53,7 +69,7 @@ st.markdown(
     section[data-testid="stSidebar"] div,
     section[data-testid="stSidebar"] label {{ color: {fixed_colors['sidebar_text']} !important; }}
 
-    /* --- 1) SEARCH BOX (หน้าหลัก) --- */
+    /* --- SEARCH BOX (หน้าหลัก) --- */
     section[data-testid="stMain"] div[data-baseweb="input"] {{
         background-color: #ffffff !important;
         border: 2px solid #CBD5E1 !important;
@@ -64,16 +80,13 @@ st.markdown(
         color: #1e293b !important;
     }}
 
-    /* --- 2) PASSWORD INPUT (FIXED: Eye icon ชิดขวา + ย่อขนาดได้) --- */
-
-    /* A) ตัวหนังสือสีขาว */
+    /* --- PASSWORD INPUT (Eye icon ชิดขวา + ย่อขนาดได้) --- */
     section[data-testid="stSidebar"] input[type="password"] {{
         color: #ffffff !important;
         -webkit-text-fill-color: #ffffff !important;
         caret-color: #ffffff !important;
     }}
 
-    /* B) พื้นหลังช่องรหัส + บังคับ layout เป็น flex */
     section[data-testid="stSidebar"] div[data-testid="stTextInput"] div[data-baseweb="input"] {{
         background-color: #334155 !important;
         border: 1px solid #475569 !important;
@@ -83,13 +96,11 @@ st.markdown(
         align-items: center !important;
     }}
 
-    /* ให้ส่วน input กินพื้นที่หลัก */
     section[data-testid="stSidebar"] div[data-testid="stTextInput"] div[data-baseweb="input"] > div:first-child {{
         flex: 1 1 auto !important;
         min-width: 0 !important;
     }}
 
-    /* C) กล่องครอบไอคอน (end enhancer) ดันไปขวาสุด */
     section[data-testid="stSidebar"] div[data-testid="stTextInput"] div[data-baseweb="input"] > div:last-child {{
         flex: 0 0 auto !important;
         margin-left: auto !important;
@@ -101,7 +112,6 @@ st.markdown(
         background: transparent !important;
     }}
 
-    /* D) ย่อปุ่มรูปตา */
     section[data-testid="stSidebar"] div[data-testid="stTextInput"] div[data-baseweb="input"] > div:last-child button {{
         width: 28px !important;
         height: 28px !important;
@@ -113,7 +123,6 @@ st.markdown(
         background: transparent !important;
     }}
 
-    /* E) ย่อไอคอนรูปตา */
     section[data-testid="stSidebar"] div[data-testid="stTextInput"] div[data-baseweb="input"] > div:last-child svg {{
         width: 16px !important;
         height: 16px !important;
@@ -137,7 +146,7 @@ st.markdown(
     .search-label {{ font-weight: bold; margin-bottom: 5px; font-size: 1.1rem; color: {main_text}; }}
     header[data-testid="stHeader"] {{ background-color: rgba(0,0,0,0); }}
 
-    /* Custom Styling */
+    /* Toggle panel */
     div[data-testid="stToggle"] {{
         background-color: #E2E8F0; padding: 15px; border-radius: 8px; border: 1px solid #CBD5E1; margin-bottom: 10px;
     }}
@@ -149,7 +158,7 @@ st.markdown(
     [data-testid='stFileUploader'] svg, [data-testid='stFileUploader'] div {{ fill: #2563EB !important; color: #1E3A8A !important; }}
     [data-testid='stFileUploader'] button {{ background-color: #2563EB; color: white !important; border: none; }}
 
-    /* --- Logout Button Style (Red-Orange) --- */
+    /* Logout Button */
     section[data-testid="stSidebar"] .stButton:last-of-type button {{
         background-color: #FF5722 !important;
         color: white !important;
@@ -157,7 +166,7 @@ st.markdown(
         font-weight: bold;
     }}
 
-    /* --- Form Login Button Style (PASTEL GREEN) --- */
+    /* Form Login Button */
     div[data-testid="stForm"] button {{
         width: 100%;
         background-color: #66D9A5 !important;
@@ -170,7 +179,7 @@ st.markdown(
         background-color: #57C293 !important;
     }}
 
-    /* --- Table Header Styling (Bold & Center) --- */
+    /* Table Header */
     div[data-testid="stDataFrame"] div[role="columnheader"] {{
         font-weight: 900 !important;
         color: {main_text} !important;
@@ -184,10 +193,8 @@ st.markdown(
 )
 
 # =========================
-# Config & Functions
+# 5) Helpers
 # =========================
-TARGET_FILE_NAME = "InvLotFrmByLot.xlsx"
-
 def fix_thai_encoding(text):
     if not isinstance(text, str):
         return text
@@ -196,13 +203,15 @@ def fix_thai_encoding(text):
     except Exception:
         return text
 
+@st.cache_resource(show_spinner=False)
+def get_repo():
+    token = st.secrets["GITHUB_TOKEN"]
+    repo_name = st.secrets["REPO_NAME"]
+    return Github(token).get_repo(repo_name)
+
 def upload_to_github(file_content: bytes):
     try:
-        token = st.secrets["GITHUB_TOKEN"]
-        repo_name = st.secrets["REPO_NAME"]
-        g = Github(token)
-        repo = g.get_repo(repo_name)
-
+        repo = get_repo()
         try:
             contents = repo.get_contents(TARGET_FILE_NAME)
             repo.update_file(contents.path, "Update data", file_content, contents.sha)
@@ -210,58 +219,100 @@ def upload_to_github(file_content: bytes):
         except Exception:
             repo.create_file(TARGET_FILE_NAME, "Initial upload", file_content)
             return True, "สร้างไฟล์ใหม่สำเร็จ!"
-
     except Exception as e:
         return False, f"GitHub Error: {str(e)}"
 
-@st.cache_data(ttl=0)
+@st.cache_data(ttl=600, show_spinner=False)  # cache 10 นาที
 def load_data_from_github():
+    """
+    โหลดไฟล์จาก GitHub + อ่าน Excel + ทำความสะอาด + สร้างคอลัมน์สำหรับค้นหา
+    คืนค่า: (df_prepared, report_date_str)
+    """
     try:
-        token = st.secrets["GITHUB_TOKEN"]
-        repo_name = st.secrets["REPO_NAME"]
-        g = Github(token)
-        repo = g.get_repo(repo_name)
-
+        repo = get_repo()
         contents = repo.get_contents(TARGET_FILE_NAME)
-        file_content = contents.decoded_content
+        file_bytes = contents.decoded_content
 
+        # อ่าน excel (robust)
         try:
-            df = pd.read_excel(io.BytesIO(file_content))
+            df = pd.read_excel(io.BytesIO(file_bytes))
         except Exception:
-            df = pd.read_excel(io.BytesIO(file_content), engine="xlrd")
+            try:
+                df = pd.read_excel(io.BytesIO(file_bytes), engine="openpyxl")
+            except Exception:
+                df = pd.read_excel(io.BytesIO(file_bytes), engine="xlrd")
 
+        # Fix encoding
         for col in df.select_dtypes(include=["object"]).columns:
             df[col] = df[col].apply(fix_thai_encoding)
         df.columns = [fix_thai_encoding(c) for c in df.columns]
-        return df
+        df.columns = df.columns.astype(str).str.strip()
 
+        # report_date
+        report_date_str = "-"
+        if "d1" in df.columns and not df.empty:
+            try:
+                raw = df["d1"].iloc[0]
+                if isinstance(raw, pd.Timestamp):
+                    report_date_str = raw.strftime("%d/%m/%Y")
+                else:
+                    try:
+                        report_date_str = pd.to_datetime(fix_thai_encoding(str(raw))).strftime("%d/%m/%Y")
+                    except Exception:
+                        report_date_str = str(raw)
+            except Exception:
+                pass
+
+        # Normalize important columns
+        trade_col = next((c for c in df.columns if c.lower().replace(" ", "") == "tradename"), None)
+        df["TradeName"] = df[trade_col].fillna("-") if trade_col else "-"
+        df["LotNo"] = df.get("LotNo", pd.Series(["-"] * len(df))).fillna("-")
+        df["price"] = df.get("price", pd.Series([0] * len(df))).fillna(0)
+
+        # DisplayName
+        df["DisplayName"] = ""
+        if "NAME1" in df.columns:
+            df["DisplayName"] += df["NAME1"].fillna("").astype(str) + " "
+        if "CONTENT" in df.columns:
+            df["DisplayName"] += df["CONTENT"].fillna("").astype(str) + " "
+        if "TYPE" in df.columns:
+            df["DisplayName"] += df["TYPE"].fillna("").astype(str)
+        df["DisplayName"] = df["DisplayName"].str.strip()
+
+        # QtyDisplay
+        amt = df["Amount1"].astype(str) if "Amount1" in df.columns else pd.Series(["0"] * len(df))
+        unit = df["minofLotPack"].astype(str) if "minofLotPack" in df.columns else pd.Series([""] * len(df))
+        df["QtyDisplay"] = amt.astype(str) + " x " + unit.astype(str)
+
+        # SearchBlob (ค้นหา 1 ครั้งเร็วขึ้น)
+        code1 = df.get("CODE1", pd.Series([""] * len(df))).fillna("").astype(str)
+        df["SearchBlob"] = (
+            df["DisplayName"].fillna("").astype(str)
+            + " "
+            + code1
+            + " "
+            + df["TradeName"].fillna("").astype(str)
+            + " "
+            + df["LotNo"].fillna("").astype(str)
+        ).str.lower()
+
+        return df, report_date_str
     except Exception:
-        return None
+        return None, "-"
 
 # =========================
-# SIDEBAR
+# 6) SIDEBAR
 # =========================
 with st.sidebar:
     st.title("⚙️ เมนูหลัก")
 
-    # Toggle Dark Mode
-    is_dark = st.session_state.theme == "dark"
-    if st.toggle("🌙 Dark mode", value=is_dark):
-        st.session_state.theme = "dark"
-        st.rerun()
-    else:
-        if st.session_state.theme == "dark":
-            st.session_state.theme = "light"
-            st.rerun()
-
+    # Dark mode / Fast mode (ไม่ต้อง st.rerun() เอง)
+    st.toggle("🌙 Dark mode", key="dark_mode")
+    st.toggle("⚡ โหมดเร็ว (โหลดไวขึ้น)", key="fast_mode")
     st.divider()
 
     # Login System (ปลอดภัย: ใช้ secrets/env)
     st.write("🔐 **สำหรับเจ้าหน้าที่**")
-    if "logged_in" not in st.session_state:
-        st.session_state.logged_in = False
-
-    # อ่านรหัสจาก secrets หรือ env (กันแอปพังถ้ายังไม่ตั้ง)
     ADMIN_PASSWORD = st.secrets.get("ADMIN_PASSWORD", os.environ.get("ADMIN_PASSWORD", ""))
 
     if not st.session_state.logged_in:
@@ -275,11 +326,9 @@ with st.sidebar:
             elif password == ADMIN_PASSWORD:
                 st.session_state.logged_in = True
                 st.success("✅ ยินดีต้อนรับ")
-                st.rerun()
             else:
                 st.error("❌ รหัสผ่านไม่ถูกต้อง")
     else:
-        # Admin Box
         st.markdown(
             """
             <div style="
@@ -311,7 +360,8 @@ with st.sidebar:
                     if success:
                         status.update(label="✅ สำเร็จ", state="complete")
                         st.success(msg)
-                        st.cache_data.clear()
+                        # เคลียร์ cache เฉพาะข้อมูลที่โหลดจาก GitHub
+                        load_data_from_github.clear()
                         st.rerun()
                     else:
                         status.update(label="❌ ล้มเหลว", state="error")
@@ -319,54 +369,17 @@ with st.sidebar:
 
         st.markdown("---")
         if st.button("ออกจากระบบ", key="logout_btn"):
-            st.session_state.clear()
-            st.rerun()
+            st.session_state.logged_in = False
+            st.success("ออกจากระบบแล้ว")
 
 # =========================
-# MAIN CONTENT
+# 7) MAIN CONTENT
 # =========================
 with st.spinner("กำลังโหลดข้อมูล..."):
-    df = load_data_from_github()
-
-report_date_str = "-"
-
-if df is not None:
-    df.columns = df.columns.astype(str).str.strip()
-
-    if "d1" in df.columns and not df.empty:
-        try:
-            raw = df["d1"].iloc[0]
-            if isinstance(raw, pd.Timestamp):
-                report_date_str = raw.strftime("%d/%m/%Y")
-            else:
-                try:
-                    report_date_str = pd.to_datetime(fix_thai_encoding(str(raw))).strftime("%d/%m/%Y")
-                except Exception:
-                    report_date_str = str(raw)
-        except Exception:
-            pass
-
-    trade_col = next((c for c in df.columns if c.lower().replace(" ", "") == "tradename"), None)
-    df["TradeName"] = df[trade_col].fillna("-") if trade_col else "-"
-    df["LotNo"] = df.get("LotNo", pd.Series(["-"] * len(df))).fillna("-")
-    df["price"] = df.get("price", pd.Series([0] * len(df))).fillna(0)
-
-    df["DisplayName"] = ""
-    if "NAME1" in df.columns:
-        df["DisplayName"] += df["NAME1"].fillna("").astype(str) + " "
-    if "CONTENT" in df.columns:
-        df["DisplayName"] += df["CONTENT"].fillna("").astype(str) + " "
-    if "TYPE" in df.columns:
-        df["DisplayName"] += df["TYPE"].fillna("").astype(str)
-    df["DisplayName"] = df["DisplayName"].str.strip()
-
-    amt = df["Amount1"].astype(str) if "Amount1" in df.columns else "0"
-    unit = df["minofLotPack"].astype(str) if "minofLotPack" in df.columns else ""
-    df["QtyDisplay"] = amt + " x " + unit
+    df, report_date_str = load_data_from_github()
 
 # --- UI HEADER (Sticky) ---
 st.markdown('<div class="sticky-top-container">', unsafe_allow_html=True)
-
 c_logo, c_title, c_search = st.columns([0.15, 0.5, 0.35])
 
 with c_logo:
@@ -393,34 +406,50 @@ with c_title:
 
 with c_search:
     st.markdown('<div class="search-label">🔍 ค้นหารายการยา</div>', unsafe_allow_html=True)
-    search_query = st.text_input(
-        "Search",
-        "",
-        placeholder="พิมพ์ชื่อยา, รหัส หรือ Lot...",
-        label_visibility="collapsed",
-    )
+
+    # Search แบบ form: ไม่ rerun ทุกครั้งที่พิมพ์
+    with st.form("search_form", clear_on_submit=False):
+        q = st.text_input(
+            "Search",
+            value=st.session_state.search_query,
+            placeholder="พิมพ์ชื่อยา, รหัส หรือ Lot...",
+            label_visibility="collapsed",
+        )
+        col_a, col_b = st.columns([0.65, 0.35])
+        with col_a:
+            submitted = st.form_submit_button("ค้นหา")
+        with col_b:
+            cleared = st.form_submit_button("ล้าง")
+
+    if submitted:
+        st.session_state.search_query = q.strip()
+    if cleared:
+        st.session_state.search_query = ""
 
 st.markdown("</div>", unsafe_allow_html=True)
 
-# --- RESULT TABLE ---
-if df is not None:
-    if search_query:
-        mask = (
-            df["DisplayName"].str.contains(search_query, case=False, na=False)
-            | df.get("CODE1", pd.Series([""] * len(df))).astype(str).str.contains(search_query, case=False, na=False)
-            | df["TradeName"].str.contains(search_query, case=False, na=False)
-            | df["LotNo"].astype(str).str.contains(search_query, case=False, na=False)
-        )
-        display_df = df[mask]
-    else:
-        display_df = df
+search_query = (st.session_state.search_query or "").strip()
 
-    if not display_df.empty:
-        # Format Date as String DD-MM-YYYY
+# =========================
+# 8) RESULT TABLE
+# =========================
+if df is None:
+    st.info("👋 ยินดีต้อนรับ กรุณาให้เจ้าหน้าที่ Login เพื่ออัปโหลดข้อมูลครั้งแรก")
+else:
+    if search_query:
+        q_lower = search_query.lower()
+        mask = df["SearchBlob"].str.contains(q_lower, na=False, regex=False)
+        display_df = df.loc[mask].copy()
+    else:
+        display_df = df.copy()
+
+    if display_df.empty:
+        st.warning(f"ไม่พบข้อมูล '{search_query}'")
+    else:
+        # Exp date
         if "ExpDate" in display_df.columns:
-            display_df["EXP_Show"] = (
-                pd.to_datetime(display_df["ExpDate"], errors="coerce").dt.strftime("%d-%m-%Y").fillna("-")
-            )
+            exp_show = pd.to_datetime(display_df["ExpDate"], errors="coerce").dt.strftime("%d-%m-%Y")
+            display_df["EXP_Show"] = exp_show.fillna("-")
         else:
             display_df["EXP_Show"] = "-"
 
@@ -440,26 +469,39 @@ if df is not None:
         final_cols = [c for c in ["ชื่อรายการ", "รหัส", "Tradename", "คงเหลือ", "ทุน", "Lot", "EXP"] if c in table.columns]
         table = table[final_cols].reset_index(drop=True)
 
-        group_ids = (table["ชื่อรายการ"] != table["ชื่อรายการ"].shift()).cumsum()
-        rows_alt = table.index[group_ids % 2 == 1]
-        rows_norm = table.index[group_ids % 2 == 0]
+        # โหมดเร็ว: ไม่ใช้ Styler (เร็วกว่าเยอะ)
+        if st.session_state.fast_mode:
+            column_config = {}
+            if "ทุน" in table.columns:
+                column_config["ทุน"] = st.column_config.NumberColumn("ทุน", format="%,.2f")
+                # ensure numeric
+                table["ทุน"] = pd.to_numeric(table["ทุน"], errors="coerce").fillna(0)
 
-        styler = table.style.format(precision=2)
-        if "ทุน" in table.columns:
-            styler = styler.format({"ทุน": "{:,.2f}"})
+            st.dataframe(
+                table,
+                use_container_width=True,
+                hide_index=True,
+                height=600,
+                column_config=column_config if column_config else None,
+            )
+        else:
+            # โหมดสวย: ใช้ styler (ช้ากว่า)
+            group_ids = (table["ชื่อรายการ"] != table["ชื่อรายการ"].shift()).cumsum()
+            rows_alt = table.index[group_ids % 2 == 1]
+            rows_norm = table.index[group_ids % 2 == 0]
 
-        styler = styler.set_properties(
-            subset=pd.IndexSlice[rows_alt, :],
-            **{"background-color": fixed_colors["table_bg_alt"]},
-        )
-        styler = styler.set_properties(
-            subset=pd.IndexSlice[rows_norm, :],
-            **{"background-color": fixed_colors["table_bg_norm"]},
-        )
-        styler = styler.set_properties(**{"color": fixed_colors["table_text"]})
+            styler = table.style.format(precision=2)
+            if "ทุน" in table.columns:
+                styler = styler.format({"ทุน": "{:,.2f}"})
 
-        st.dataframe(styler, use_container_width=True, hide_index=True, height=600)
-    else:
-        st.warning(f"ไม่พบข้อมูล '{search_query}'")
-else:
-    st.info("👋 ยินดีต้อนรับ กรุณาให้เจ้าหน้าที่ Login เพื่ออัปโหลดข้อมูลครั้งแรก")
+            styler = styler.set_properties(
+                subset=pd.IndexSlice[rows_alt, :],
+                **{"background-color": fixed_colors["table_bg_alt"]},
+            )
+            styler = styler.set_properties(
+                subset=pd.IndexSlice[rows_norm, :],
+                **{"background-color": fixed_colors["table_bg_norm"]},
+            )
+            styler = styler.set_properties(**{"color": fixed_colors["table_text"]})
+
+            st.dataframe(styler, use_container_width=True, hide_index=True, height=600)
