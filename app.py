@@ -23,7 +23,7 @@ if "dark_mode" not in st.session_state:
     st.session_state.dark_mode = False
 
 if "fast_mode" not in st.session_state:
-    st.session_state.fast_mode = True
+    st.session_state.fast_mode = False
 
 if "logged_in" not in st.session_state:
     st.session_state.logged_in = False
