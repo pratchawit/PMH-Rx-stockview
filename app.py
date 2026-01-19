@@ -18,17 +18,15 @@ st.set_page_config(
 if 'theme' not in st.session_state:
     st.session_state.theme = 'light'
 
-# กำหนดสีพื้นหลังหลัก (Main Background)
 if st.session_state.theme == 'dark':
-    main_bg = '#262730'      # พื้นหลังสีเทาเข้ม
-    main_text = '#ffffff'    # ตัวหนังสือหัวข้อสีขาว
-    header_bg = '#262730'    # Header สีเดียวกับพื้นหลัง
+    main_bg = '#262730'
+    main_text = '#ffffff'
+    header_bg = '#262730'
 else:
-    main_bg = '#f0f2f6'      # พื้นหลังสีเทาอ่อนสบายตา
-    main_text = '#31333f'    # ตัวหนังสือหัวข้อสีเทาเข้ม
+    main_bg = '#f0f2f6'
+    main_text = '#31333f'
     header_bg = '#f0f2f6'
 
-# --- Fixed Colors ---
 fixed_colors = {
     'sidebar_bg': '#f8fafc',     
     'sidebar_text': '#1e293b',   
@@ -39,28 +37,21 @@ fixed_colors = {
     'table_text': '#1e293b'      
 }
 
-# --- CSS Injection (รวมทุกการปรับแต่ง) ---
+# --- CSS Injection ---
 st.markdown(
     f"""
     <style>
-    /* 1. พื้นหลังหลัก */
-    .stApp {{
-        background-color: {main_bg};
-        color: {main_text};
-    }}
+    /* พื้นหลังหลัก */
+    .stApp {{ background-color: {main_bg}; color: {main_text}; }}
     
-    /* 2. Sidebar */
-    section[data-testid="stSidebar"] {{
-        background-color: {fixed_colors['sidebar_bg']};
-    }}
+    /* Sidebar */
+    section[data-testid="stSidebar"] {{ background-color: {fixed_colors['sidebar_bg']}; }}
     section[data-testid="stSidebar"] p, 
     section[data-testid="stSidebar"] span, 
     section[data-testid="stSidebar"] div,
-    section[data-testid="stSidebar"] label {{
-        color: {fixed_colors['sidebar_text']} !important;
-    }}
+    section[data-testid="stSidebar"] label {{ color: {fixed_colors['sidebar_text']} !important; }}
     
-    /* 3. Input Fields */
+    /* Input Fields */
     div[data-baseweb="input"] {{
         background-color: {fixed_colors['input_bg']} !important;
         border: 1px solid #ccc !important;
@@ -73,86 +64,47 @@ st.markdown(
         background-color: {fixed_colors['input_bg']} !important;
     }}
     
-    /* 4. Sticky Header */
+    /* Sticky Header */
     .sticky-top-container {{
-        position: sticky;
-        top: 0;
-        z-index: 990;
+        position: sticky; top: 0; z-index: 990;
         background-color: {header_bg};
         padding: 10px 20px;
         border-bottom: 1px solid rgba(128,128,128, 0.2);
-        margin-left: -1rem;
-        margin-right: -1rem;
+        margin-left: -1rem; margin-right: -1rem;
     }}
     
-    /* 5. Typography */
-    .app-title {{
-        font-size: 1.8rem;
-        font-weight: 800;
-        color: {main_text};
-        margin-bottom: 5px;
-    }}
-    .search-label {{
-        font-weight: bold; 
-        margin-bottom: 5px; 
-        font-size: 1.1rem;
-        color: {main_text};
-    }}
-    header[data-testid="stHeader"] {{
-        background-color: rgba(0,0,0,0);
-    }}
+    /* Typography */
+    .app-title {{ font-size: 1.8rem; font-weight: 800; color: {main_text}; margin-bottom: 5px; }}
+    .search-label {{ font-weight: bold; margin-bottom: 5px; font-size: 1.1rem; color: {main_text}; }}
+    header[data-testid="stHeader"] {{ background-color: rgba(0,0,0,0); }}
 
-    /* ============================================================ */
-    /* NEW: Custom Styling */
-    /* ============================================================ */
-    
-    /* 1. ปรับแต่งเมนู Toggle (Dark Mode) ให้มีแถบคาดสีเทา */
+    /* Custom Styling */
     div[data-testid="stToggle"] {{
-        background-color: #E2E8F0; /* สีเทาเข้มขึ้นมาหน่อย */
-        padding: 15px;
-        border-radius: 8px;
-        border: 1px solid #CBD5E1;
-        margin-bottom: 10px;
+        background-color: #E2E8F0; padding: 15px; border-radius: 8px; border: 1px solid #CBD5E1; margin-bottom: 10px;
     }}
-    div[data-testid="stToggle"] label p {{
-        font-weight: bold;
-        font-size: 1rem;
-    }}
-
-    /* 2. File Uploader (Modern Blue Style) */
+    
+    /* Upload Style */
     [data-testid='stFileUploader'] section {{
-        background-color: #F0F9FF; 
-        border: 2px dashed #2563EB;
-        border-radius: 10px;
-        padding: 15px;
+        background-color: #F0F9FF; border: 2px dashed #2563EB; border-radius: 10px; padding: 15px;
     }}
-    [data-testid='stFileUploader'] svg, 
-    [data-testid='stFileUploader'] div {{
-        fill: #2563EB !important;
-        color: #1E3A8A !important;
-    }}
-    [data-testid='stFileUploader'] button {{
-        background-color: #2563EB; 
-        color: white !important;
-        border: none;
-    }}
+    [data-testid='stFileUploader'] svg, [data-testid='stFileUploader'] div {{ fill: #2563EB !important; color: #1E3A8A !important; }}
+    [data-testid='stFileUploader'] button {{ background-color: #2563EB; color: white !important; border: none; }}
 
-    /* 3. ปุ่ม 'ออกจากระบบ' (Red-Orange) */
-    /* เทคนิค: เลือกปุ่มสุดท้ายใน Sidebar เสมอ */
+    /* Logout Button Style (Red-Orange) */
     section[data-testid="stSidebar"] .stButton:last-of-type button {{
-        background-color: #FF5722 !important; /* สีส้มแดง Red-Orange */
+        background-color: #FF5722 !important; color: white !important; border: none !important; font-weight: bold;
+    }}
+    
+    /* Form Login Button Style (Green/Primary) */
+    /* ปรับแต่งปุ่มใน Form ให้ดูเด่น */
+    div[data-testid="stForm"] button {{
+        width: 100%;
+        background-color: #059669 !important; /* สีเขียว */
         color: white !important;
         border: none !important;
-        font-weight: bold;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.2);
     }}
-    section[data-testid="stSidebar"] .stButton:last-of-type button:hover {{
-        background-color: #E64A19 !important; /* สีเข้มขึ้นเมื่อ Hover */
-    }}
-
     </style>
-    """,
-    unsafe_allow_html=True
+    """, unsafe_allow_html=True
 )
 
 # --- Config & Functions ---
@@ -204,7 +156,7 @@ def load_data_from_github():
 with st.sidebar:
     st.title("⚙️ เมนูหลัก")
     
-    # --- ส่วนที่ 1: Dark Mode Toggle (มีแถบสีเทาคาดจาก CSS) ---
+    # Toggle Dark Mode
     is_dark = st.session_state.theme == 'dark'
     if st.toggle("🌙 Dark mode", value=is_dark):
         st.session_state.theme = 'dark'
@@ -222,13 +174,21 @@ with st.sidebar:
         st.session_state.logged_in = False
 
     if not st.session_state.logged_in:
-        password = st.text_input("รหัสผ่าน Admin", type="password")
-        if password == "rb,kp@10884":
-            st.session_state.logged_in = True
-            st.success("✅ เข้าสู่ระบบแล้ว")
-            st.rerun()
+        # --- ใช้ Form เพื่อแก้ปัญหา Login ยาก ---
+        with st.form(key='login_form'):
+            password = st.text_input("รหัสผ่าน Admin", type="password")
+            # ปุ่ม Submit จะ trigger เมื่อกดคลิก หรือ กด Enter ในช่อง input
+            submit_button = st.form_submit_button("เข้าสู่ระบบ")
+            
+        if submit_button:
+            if password == "rb,kp@10884":
+                st.session_state.logged_in = True
+                st.success("✅ ยินดีต้อนรับ")
+                st.rerun()
+            else:
+                st.error("❌ รหัสผ่านไม่ถูกต้อง")
     else:
-        # Admin Box (Modern Blue)
+        # Admin Box
         st.markdown("""
             <div style="
                 background-color: #EFF6FF; 
@@ -251,7 +211,6 @@ with st.sidebar:
         uploaded_file = st.file_uploader("เลือกไฟล์ Excel", type=['xlsx', 'xls'])
         
         if uploaded_file:
-            # ปุ่มอัปโหลด (จะเป็นสี Default หรือสีฟ้าตาม Theme หลัก)
             if st.button("🚀 อัปโหลดขึ้น Server"): 
                 with st.status("กำลังดำเนินการ...", expanded=True) as status:
                     success, msg = upload_to_github(uploaded_file.getvalue())
@@ -265,7 +224,6 @@ with st.sidebar:
                         st.error(msg)
         
         st.markdown("---")
-        # ปุ่มนี้จะถูก CSS จับและเปลี่ยนเป็นสีแดงส้ม (เพราะเป็นปุ่มสุดท้าย)
         if st.button("ออกจากระบบ"):
             st.session_state.logged_in = False
             st.rerun()
