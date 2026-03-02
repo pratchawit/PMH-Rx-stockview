@@ -1,0 +1,15 @@
+name: Wake up Streamlit App
+
+on:
+  schedule:
+    # รันทุกๆ 20 นาที (ตั้งตามต้องการ แต่ไม่ควรเกิน 30)
+    - cron: '*/20 * * * *'
+  workflow_dispatch: # ยอมให้กดรันเองได้ด้วย
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Hit the app URL
+        run: |
+          curl -I -s -A "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36" https://pmh-rx-stockview.streamlit.app/
